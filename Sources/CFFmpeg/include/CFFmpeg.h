@@ -45,6 +45,12 @@ static inline int64_t cff_nopts_value(void)    { return AV_NOPTS_VALUE; }
 static inline int cff_seek_size(void)          { return AVSEEK_SIZE; }
 static inline int cff_seek_force(void)         { return AVSEEK_FORCE; }
 static inline int64_t cff_time_base(void)      { return AV_TIME_BASE; }
+static inline int cff_error_eagain(void)       { return AVERROR(EAGAIN); }
+
+/* movenc/output helpers */
+static inline unsigned cff_tag_hvc1(void)      { return MKTAG('h','v','c','1'); }
+static inline int cff_pkt_flag_key(void)       { return AV_PKT_FLAG_KEY; }
+static inline int cff_avfmt_globalheader(void) { return AVFMT_GLOBALHEADER; }
 
 /* Render an AVERROR code to a human string (av_strerror wrapper). */
 static inline void cff_strerror(int errnum, char *buf, size_t buflen) {

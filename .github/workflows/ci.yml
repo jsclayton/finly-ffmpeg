@@ -1,0 +1,83 @@
+name: build
+
+# Repeatable FFmpeg build pipeline (design §10): bump version, re-run, test.
+# Runs on macOS runners which ship Xcode + iOS/tvOS SDKs + simulators.
+#
+# NOTE: no GitHub remote is configured yet. This file is ready for when one is:
+# push the repo, and CI builds all four xcframeworks, runs the simulator smoke
+# test, and (on a v* tag) publishes the xcframeworks + LGPL bundle as a release.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed for the release job on tags
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.app || sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          xcrun --sdk appletvos --show-sdk-version
+
+      - name: Build xcframeworks + LGPL bundle
+        run: ./build.sh
+
+      - name: Smoke test (simulator link + run)
+        run: ./scripts/smoke-test.sh
+
+      - name: Package artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for fw in artifacts/xcframework/*.xcframework; do
+            name="$(basename "$fw" .xcframework)"
+            ( cd artifacts/xcframework && zip -qry "../../dist/${name}.xcframework.zip" "${name}.xcframework" )
+          done
+          cp artifacts/lgpl/*.tar.gz dist/
+          # checksums for .binaryTarget(url:checksum:) consumers
+          ( cd dist && for z in *.xcframework.zip; do
+              echo "$(swift package --package-path "$GITHUB_WORKSPACE" compute-checksum "$z" 2>/dev/null || shasum -a 256 "$z" | awk '{print $1}')  $z"
+            done | tee checksums.txt )
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcframeworks
+          path: dist/
+          retention-days: 14
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./build.sh
+      - name: Package
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for fw in artifacts/xcframework/*.xcframework; do
+            name="$(basename "$fw" .xcframework)"
+            ( cd artifacts/xcframework && zip -qry "../../dist/${name}.xcframework.zip" "${name}.xcframework" )
+          done
+          cp artifacts/lgpl/*.tar.gz dist/
+          ( cd dist && for z in *.xcframework.zip; do shasum -a 256 "$z"; done > checksums.txt )
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          body_path: dist/checksums.txt

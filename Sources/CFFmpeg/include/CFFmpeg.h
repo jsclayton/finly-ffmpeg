@@ -32,4 +32,23 @@
 
 #include <libswresample/swresample.h>
 
+/*
+ * Swift can't see FFmpeg's function-like macros (AVERROR, AVERROR_EOF, …) or
+ * compute AVERROR values. These trivial inlines surface exactly what the Swift
+ * engine needs across the interop boundary.
+ */
+static inline int cff_averror(int errnum)      { return AVERROR(errnum); }
+static inline int cff_error_eof(void)          { return AVERROR_EOF; }
+static inline int cff_error_invaliddata(void)  { return AVERROR_INVALIDDATA; }
+static inline int cff_error_einval(void)       { return AVERROR(EINVAL); }
+static inline int64_t cff_nopts_value(void)    { return AV_NOPTS_VALUE; }
+static inline int cff_seek_size(void)          { return AVSEEK_SIZE; }
+static inline int cff_seek_force(void)         { return AVSEEK_FORCE; }
+static inline int64_t cff_time_base(void)      { return AV_TIME_BASE; }
+
+/* Render an AVERROR code to a human string (av_strerror wrapper). */
+static inline void cff_strerror(int errnum, char *buf, size_t buflen) {
+    if (av_strerror(errnum, buf, buflen) < 0) snprintf(buf, buflen, "error %d", errnum);
+}
+
 #endif /* FINLY_CFFMPEG_H */

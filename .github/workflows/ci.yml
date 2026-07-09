@@ -4,11 +4,16 @@ name: build
 # Runs on macOS runners which ship Xcode + iOS/tvOS SDKs + simulators.
 #
 # Builds all four xcframeworks, runs the simulator smoke test and the XCTest
-# suite, and (on a v* tag) publishes the xcframeworks + LGPL bundle as a release.
-# A branch push alone does NOT trigger this: only `main`, `v*` tags, and pull
-# requests do.
+# suite, and publishes the xcframeworks + LGPL bundle as a release.
 #
-# KNOWN FAILURE on a GitHub-hosted runner, unresolved. Every video fixture is
+# TRIGGERS ONLY ON A `v*` TAG (or a manual `workflow_dispatch`). Pushing a
+# branch, pushing `main`, and opening a pull request all do nothing. This is
+# deliberate: the XCTest job cannot pass on a GitHub-hosted runner, so leaving it
+# on every push and PR only produces a permanent red X that teaches nobody
+# anything. Tag a release and it runs; otherwise the suite is run locally with
+# `bash scripts/tools/run-range-tests.sh`.
+#
+# WHY IT CANNOT PASS on a hosted runner, unresolved. Every video fixture is
 # minted at test time by AVAssetWriter/VideoToolbox, because this FFmpeg build
 # ships no video encoders by design. A hosted runner has no GPU, and VideoToolbox
 # wedges on the first H.264 encode: `BandwidthTests` fails with
@@ -17,12 +22,12 @@ name: build
 # self-hosted runner, or committing tiny H.264/HEVC fixtures the way
 # `tiny-aac.mp4` already is, taking VideoToolbox off the critical path. Do NOT
 # "fix" it by turning the failure into a skip -- that is how a real bug hides.
+#
+# When one of those lands, restore `branches: [main]` and `pull_request:` below.
 
 on:
   push:
-    branches: [main]
     tags: ["v*"]
-  pull_request:
   workflow_dispatch:
 
 permissions:

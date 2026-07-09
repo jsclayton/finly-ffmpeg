@@ -9,8 +9,8 @@
  * publicHeadersPath (the FFmpeg install headers are synced alongside this file
  * by scripts/make-xcframeworks.sh), so cross-library includes work naturally.
  */
-#ifndef FINLY_CFFMPEG_H
-#define FINLY_CFFMPEG_H
+#ifndef MUSKET_CFFMPEG_H
+#define MUSKET_CFFMPEG_H
 
 #include <libavutil/avutil.h>
 #include <libavutil/opt.h>
@@ -71,4 +71,4 @@ static inline void cff_strerror(int errnum, char *buf, size_t buflen) {
     if (av_strerror(errnum, buf, buflen) < 0) snprintf(buf, buflen, "error %d", errnum);
 }
 
-#endif /* FINLY_CFFMPEG_H */
+#endif /* MUSKET_CFFMPEG_H */

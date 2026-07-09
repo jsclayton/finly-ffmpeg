@@ -83,7 +83,7 @@ the scripts here, then substitute the resulting \`*.xcframework\` binaries.
 
 ## Written offer
 The complete corresponding source for the FFmpeg version used is included in
-this bundle. For any questions contact: john@johnclayton.co
+this bundle. For any questions contact: github@codemonkeylabs.com
 MD
 
 # 6) tar it up next to the bundle dir

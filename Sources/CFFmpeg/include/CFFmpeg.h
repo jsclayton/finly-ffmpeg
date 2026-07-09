@@ -52,6 +52,22 @@ static inline unsigned cff_tag_hvc1(void)      { return MKTAG('h','v','c','1'); 
 static inline int cff_pkt_flag_key(void)       { return AV_PKT_FLAG_KEY; }
 static inline int cff_avfmt_globalheader(void) { return AVFMT_GLOBALHEADER; }
 
+/* Seeking. AVSEEK_FLAG_BACKWARD lands on the keyframe at or before the target. */
+static inline int cff_seek_flag_backward(void) { return AVSEEK_FLAG_BACKWARD; }
+
+/*
+ * AVIndexEntry.flags is a C bitfield (`int flags:2`), which Swift cannot read.
+ * These accessors expose the demuxer's keyframe index — the cheap way to derive
+ * exact segment boundaries without producing anything (design §5/§8; the plugin's
+ * keyframe index is the enhancement, this is the no-plugin fallback).
+ */
+static inline int cff_index_entry_is_keyframe(const AVIndexEntry *e) {
+    return e && (e->flags & AVINDEX_KEYFRAME) != 0;
+}
+static inline int64_t cff_index_entry_timestamp(const AVIndexEntry *e) {
+    return e ? e->timestamp : 0;
+}
+
 /* Render an AVERROR code to a human string (av_strerror wrapper). */
 static inline void cff_strerror(int errnum, char *buf, size_t buflen) {
     if (av_strerror(errnum, buf, buflen) < 0) snprintf(buf, buflen, "error %d", errnum);

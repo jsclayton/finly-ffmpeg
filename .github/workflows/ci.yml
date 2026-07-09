@@ -38,6 +38,20 @@ jobs:
       - name: Smoke test (simulator link + run)
         run: ./scripts/smoke-test.sh
 
+      # The XCTest suite needs the xcframeworks this job just built (Package.swift
+      # uses local-path binaryTargets), so it runs here rather than in its own job.
+      #
+      # Tests that need media the runner doesn't have skip themselves: RealMKVTests,
+      # BFrameTimingTests, AVSyncTests, FragmenterEAC3Tests and the real-media halves
+      # of the others are gated on build/mkv-fixture.txt. HTTPRangeTests do run — the
+      # wrapper builds the Go origin server, and Go ships on the macOS runner.
+      - name: Run XCTest suite (iOS simulator)
+        run: |
+          set -euo pipefail
+          DEST="$(bash scripts/tools/sim-destination.sh)"
+          echo "destination: $DEST"
+          MUSKET_DESTINATION="$DEST" bash scripts/tools/run-range-tests.sh
+
       - name: Package artifacts
         run: |
           set -euo pipefail

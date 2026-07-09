@@ -78,7 +78,7 @@ write_info_plist() { # dest, name, slice
 <dict>
   <key>CFBundleDevelopmentRegion</key><string>en</string>
   <key>CFBundleExecutable</key><string>${name}</string>
-  <key>CFBundleIdentifier</key><string>co.johnclayton.finly.ffmpeg.${name}</string>
+  <key>CFBundleIdentifier</key><string>co.johnclayton.musket.${name}</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>${name}</string>
   <key>CFBundlePackageType</key><string>FMWK</string>

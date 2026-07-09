@@ -2,7 +2,7 @@
 #
 # package-lgpl.sh — produce the LGPL corresponding-source compliance bundle.
 #
-# FFmpeg is LGPL-2.1+. Shipping it (even dynamically linked) obliges Finly to
+# FFmpeg is LGPL-2.1+. Shipping it (even dynamically linked) obliges Musket to
 # provide the library's complete corresponding source and the scripts used to
 # build it, so a recipient can rebuild and relink (design §10 / parent §6).
 #
@@ -14,7 +14,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 
 [[ -f "${FFMPEG_TARBALL}" ]] || die "source tarball missing — run scripts/fetch-ffmpeg.sh first"
 
-BUNDLE_NAME="finly-ffmpeg-lgpl-${FFMPEG_VERSION}"
+BUNDLE_NAME="musket-lgpl-${FFMPEG_VERSION}"
 BUNDLE_DIR="${ARTIFACTS_DIR}/lgpl/${BUNDLE_NAME}"
 rm -rf "${BUNDLE_DIR}"
 mkdir -p "${BUNDLE_DIR}/scripts"
@@ -38,7 +38,7 @@ fi
 
 # 4) the canonical configure invocation used for every slice (audit trail)
 {
-  echo "# Exact FFmpeg configure options used by the Finly build pipeline."
+  echo "# Exact FFmpeg configure options used by the Musket build pipeline."
   echo "# Per-arch flags (--arch/--cc/--sysroot/--extra-cflags/--extra-ldflags with the"
   echo "# clang -target triple) are added by scripts/build-ffmpeg.sh; see below."
   echo
@@ -57,10 +57,10 @@ fi
 
 # 5) the recipient-facing relink instructions + written offer
 cat > "${BUNDLE_DIR}/README-LGPL.md" <<MD
-# FFmpeg — LGPL Corresponding Source (Finly)
+# FFmpeg — LGPL Corresponding Source (Musket)
 
 This bundle is provided to satisfy the GNU LGPL (v2.1 or later) obligations for
-the FFmpeg libraries distributed with Finly. Finly does not modify FFmpeg; it
+the FFmpeg libraries distributed with Musket. Musket does not modify FFmpeg; it
 links the unmodified libraries below as **dynamic frameworks**.
 
 ## What FFmpeg version this is

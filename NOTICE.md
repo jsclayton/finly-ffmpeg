@@ -22,4 +22,4 @@ FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project.
 Upstream: https://ffmpeg.org
 
 An in-app attribution screen and the bundled `COPYING.LGPLv2.1` / `LICENSE.md`
-texts must accompany any shipped Finly build that links these libraries.
+texts must accompany any shipped Musket build that links these libraries.

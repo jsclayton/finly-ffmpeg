@@ -3,9 +3,20 @@ name: build
 # Repeatable FFmpeg build pipeline: bump version, re-run, test.
 # Runs on macOS runners which ship Xcode + iOS/tvOS SDKs + simulators.
 #
-# NOTE: no GitHub remote is configured yet. This file is ready for when one is:
-# push the repo, and CI builds all four xcframeworks, runs the simulator smoke
-# test, and (on a v* tag) publishes the xcframeworks + LGPL bundle as a release.
+# Builds all four xcframeworks, runs the simulator smoke test and the XCTest
+# suite, and (on a v* tag) publishes the xcframeworks + LGPL bundle as a release.
+# A branch push alone does NOT trigger this: only `main`, `v*` tags, and pull
+# requests do.
+#
+# KNOWN FAILURE on a GitHub-hosted runner, unresolved. Every video fixture is
+# minted at test time by AVAssetWriter/VideoToolbox, because this FFmpeg build
+# ships no video encoders by design. A hosted runner has no GPU, and VideoToolbox
+# wedges on the first H.264 encode: `BandwidthTests` fails with
+# "timed out feeding (video 3/120 ...)" after accepting three frames of 320x240
+# in 90 s. The suite takes 201 s there against 14 s locally. Two ways out: a
+# self-hosted runner, or committing tiny H.264/HEVC fixtures the way
+# `tiny-aac.mp4` already is, taking VideoToolbox off the critical path. Do NOT
+# "fix" it by turning the failure into a skip -- that is how a real bug hides.
 
 on:
   push:

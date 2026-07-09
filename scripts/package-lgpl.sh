@@ -4,7 +4,7 @@
 #
 # FFmpeg is LGPL-2.1+. Shipping it (even dynamically linked) obliges Musket to
 # provide the library's complete corresponding source and the scripts used to
-# build it, so a recipient can rebuild and relink (design §10 / parent §6).
+# build it, so a recipient can rebuild and relink (LGPL §6).
 #
 # Because we ship DYNAMIC frameworks, the relink right is satisfied by
 # construction: a recipient rebuilds FFmpeg from this bundle and drops the

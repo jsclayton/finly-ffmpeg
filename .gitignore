@@ -13,6 +13,9 @@
 /Sources/CFFmpeg/include/libav*/
 /Sources/CFFmpeg/include/libsw*/
 
+# Compiled test-fixture origin server (source is tracked; the binary is not)
+/scripts/tools/rangeserver/rangeserver
+
 # SwiftPM
 /.build/
 /.swiftpm/

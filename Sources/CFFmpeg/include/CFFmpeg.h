@@ -65,6 +65,16 @@ static inline int cff_index_entry_is_keyframe(const AVIndexEntry *e) {
 static inline int64_t cff_index_entry_timestamp(const AVIndexEntry *e) {
     return e ? e->timestamp : 0;
 }
+/* Absolute byte offset in the file: matroskadec adds segment_start to the raw
+ * CueClusterPosition, and mov stores chunk_offset + preceding sample sizes. */
+static inline int64_t cff_index_entry_pos(const AVIndexEntry *e) {
+    return e ? e->pos : -1;
+}
+/* Also a bitfield (`int size:30`). Exact sample size in MP4; always 0 in
+ * Matroska, whose index entries are added with size 0. */
+static inline int cff_index_entry_size(const AVIndexEntry *e) {
+    return e ? e->size : 0;
+}
 
 /* Render an AVERROR code to a human string (av_strerror wrapper). */
 static inline void cff_strerror(int errnum, char *buf, size_t buflen) {

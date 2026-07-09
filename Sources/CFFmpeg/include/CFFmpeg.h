@@ -2,9 +2,8 @@
  * CFFmpeg.h — umbrella surfacing the slim FFmpeg C API to Swift.
  *
  * This is the ONLY bridge between Swift and libav*. The higher-level engine
- * (pump-loop actor, URLSession AVIOContext bridge, Fragmenter, Playlist Engine)
- * is built on top of these symbols in later phases; nothing here knows about
- * Jellyfin, HLS, or policy.
+ * (URLSession AVIOContext bridge, Fragmenter, playlist engine) is built on top of
+ * these symbols; nothing here knows about HLS, transport, or policy.
  *
  * Header search resolves <libavformat/...> etc. against this target's
  * publicHeadersPath (the FFmpeg install headers are synced alongside this file
@@ -58,8 +57,7 @@ static inline int cff_seek_flag_backward(void) { return AVSEEK_FLAG_BACKWARD; }
 /*
  * AVIndexEntry.flags is a C bitfield (`int flags:2`), which Swift cannot read.
  * These accessors expose the demuxer's keyframe index — the cheap way to derive
- * exact segment boundaries without producing anything (design §5/§8; the plugin's
- * keyframe index is the enhancement, this is the no-plugin fallback).
+ * exact segment boundaries without producing anything.
  */
 static inline int cff_index_entry_is_keyframe(const AVIndexEntry *e) {
     return e && (e->flags & AVINDEX_KEYFRAME) != 0;

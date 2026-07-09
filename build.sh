@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# build.sh — one-command orchestrator for the Finly FFmpeg pipeline.
+# build.sh — one-command driver for the FFmpeg build pipeline.
 #
 #   ./build.sh              fetch -> build all slices -> xcframeworks -> LGPL bundle
 #   ./build.sh --smoke      also run the simulator link+run smoke test at the end
 #   ./build.sh --clean      wipe build/ and artifacts/ first
 #
 # Bumping FFmpeg is a two-line edit in scripts/config.sh (version + sha256),
-# then re-run this. That is the entire update path (design §10).
+# then re-run this. That is the entire update path.
 
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# config.sh — single source of truth for the Finly FFmpeg build pipeline.
+# config.sh — single source of truth for the FFmpeg build pipeline.
 #
 # Everything downstream (fetch, build, packaging, LGPL bundle) reads its knobs
 # from here. Bumping FFmpeg is a two-line change: FFMPEG_VERSION + FFMPEG_SHA256,
 # then re-run ./build.sh. That is the whole "bump version, re-run, test" story
-# the design (§10) asks for.
+# a maintainable FFmpeg dependency needs.
 #
 # This file is `source`d, never executed directly.
 
@@ -61,7 +61,7 @@ FF_SLICES=(ios-device ios-simulator tvos-device tvos-simulator)
 FF_LIBS=(libavutil libavcodec libavformat libswresample)
 
 # ----------------------------------------------------------------------------
-# The remux-scoped FFmpeg configure component set (design §10)
+# The remux-scoped FFmpeg configure component set
 # ----------------------------------------------------------------------------
 # Philosophy: --disable-everything, then re-enable only what an on-device
 # demux/remux + audio-transcode engine touches. No video encoders, ever. No
@@ -80,11 +80,11 @@ FF_COMPONENTS=(
   --enable-bsf=h264_mp4toannexb,hevc_mp4toannexb,h264_metadata,hevc_metadata,extract_extradata,aac_adtstoasc,dca_core,eac3_core
   # --- audio decoders: transcode sources + probe correctness (NO video decoders) ---
   --enable-decoder=dca,truehd,mlp,aac,aac_latm,ac3,eac3,flac,opus,vorbis,mp3,pcm_s16le,pcm_s24le,pcm_bluray
-  # --- text-subtitle decoders (WebVTT rendition path, Phase 2d) ---
+  # --- text-subtitle decoders (WebVTT rendition path) ---
   --enable-decoder=subrip,ass,ssa,movtext,webvtt
-  # --- audio encoders: native only, LGPL-clean (design §7) ---
+  # --- audio encoders: native only, LGPL-clean ---
   --enable-encoder=aac,ac3,eac3
-  # --- subtitle encoder for WebVTT renditions (Phase 2d) ---
+  # --- subtitle encoder for WebVTT renditions ---
   --enable-encoder=webvtt
   # --- protocols: file only, for diagnostics/fixtures; app I/O is custom AVIO ---
   --enable-protocol=file
@@ -98,7 +98,7 @@ FF_CONFIGURE=(
   --disable-doc
   --disable-debug
   --disable-network            # all I/O via app-side custom AVIOContext
-  --disable-asm                # design §10: acceptable; keeps toolchain minimal
+  --disable-asm                # acceptable here; keeps the toolchain minimal
   --disable-static
   --enable-shared              # dynamic frameworks satisfy LGPL relink by construction
   --enable-pic

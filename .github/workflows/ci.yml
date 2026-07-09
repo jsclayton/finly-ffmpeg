@@ -1,6 +1,6 @@
 name: build
 
-# Repeatable FFmpeg build pipeline (design §10): bump version, re-run, test.
+# Repeatable FFmpeg build pipeline: bump version, re-run, test.
 # Runs on macOS runners which ship Xcode + iOS/tvOS SDKs + simulators.
 #
 # NOTE: no GitHub remote is configured yet. This file is ready for when one is:

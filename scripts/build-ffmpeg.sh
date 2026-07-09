@@ -7,7 +7,7 @@
 # frameworks and xcframeworks happens later in make-xcframeworks.sh.
 #
 # In-process, not a process: we build the libav* shared libraries the app links
-# against (design §3). There is no ffmpeg binary here — --disable-programs.
+# against. There is no ffmpeg binary here — --disable-programs.
 
 source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 

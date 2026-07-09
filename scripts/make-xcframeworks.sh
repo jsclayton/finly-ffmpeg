@@ -3,7 +3,7 @@
 # make-xcframeworks.sh — assemble per-arch dylibs into dynamic frameworks,
 # then bundle the four platform slices of each library into one .xcframework.
 #
-# Dynamic frameworks are the deliberate choice (design §10): they satisfy the
+# Dynamic frameworks are the deliberate choice: they satisfy the
 # LGPL relink obligation by construction (the app links against replaceable
 # framework binaries) and let Xcode "Embed & Sign" per platform.
 #

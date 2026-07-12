@@ -88,7 +88,11 @@ FF_COMPONENTS=(
   # --- text-subtitle decoders (WebVTT rendition path) ---
   --enable-decoder=subrip,ass,ssa,movtext,webvtt
   # --- audio encoders: native only, LGPL-clean ---
-  --enable-encoder=aac,ac3,eac3
+  # flac/alac are the LOSSLESS transcode targets (audio.md §7): flac is the only true-7.1
+  # carrier, alac the ≤6ch candidate. Both are FFmpeg-native and ungated — no gpl/version3/
+  # nonfree flag (alacenc.c is `alac_encoder_select="lpc"`, one internal module) — so they
+  # keep the build LGPL-clean, same class as aac/ac3/eac3.
+  --enable-encoder=aac,ac3,eac3,flac,alac
   # --- subtitle encoder for WebVTT renditions ---
   --enable-encoder=webvtt
   # --- protocols: file only, for diagnostics/fixtures; app I/O is custom AVIO ---

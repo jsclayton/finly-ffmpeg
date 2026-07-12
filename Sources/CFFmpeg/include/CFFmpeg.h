@@ -51,6 +51,11 @@ static inline unsigned cff_tag_hvc1(void)      { return MKTAG('h','v','c','1'); 
 static inline int cff_pkt_flag_key(void)       { return AV_PKT_FLAG_KEY; }
 static inline int cff_avfmt_globalheader(void) { return AVFMT_GLOBALHEADER; }
 
+/* Encoder flag: emit the codec's headers (FLAC STREAMINFO) out-of-band, so
+ * movenc carries them in the sample entry (dfLa) rather than in-band. The macro
+ * (1 << 22) does not reliably import into Swift. Audio transcode only. */
+static inline int cff_codec_flag_global_header(void) { return AV_CODEC_FLAG_GLOBAL_HEADER; }
+
 /* Seeking. AVSEEK_FLAG_BACKWARD lands on the keyframe at or before the target. */
 static inline int cff_seek_flag_backward(void) { return AVSEEK_FLAG_BACKWARD; }
 

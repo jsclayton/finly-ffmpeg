@@ -1,0 +1,22 @@
+--- a/libavformat/mov.c	2026-07-11 21:20:00
++++ b/libavformat/mov.c	2026-07-11 21:20:00
+@@ -3046,6 +3046,19 @@
+     case AV_CODEC_ID_AV1:
+         /* field_order detection of H264 requires parsing */
+     case AV_CODEC_ID_H264:
++    /* Musket: also parse headers for HEVC. Stock mov omits HEVC from this
++       stsd switch, so need_parsing stays NONE (except the all-keyframe stss
++       fallback below) and the HEVC parser never runs during find_stream_info —
++       codecpar colour (transfer_characteristics) is then never filled from the
++       SPS VUI, and a bitstream-only-HDR remux with no 'colr' box reads as SDR
++       (see the parser.c patch; mirrors the matroskadec patch). PARSE_HEADERS
++       only fills stream parameters via PARSER_FLAG_COMPLETE_FRAMES; it does NOT
++       repack packets, split frames, or alter pts/dts — H264 already takes this
++       exact path in mov — and the HEVC parser still never sets has_b_frames, so
++       MP4's real per-sample DTS (stts/ctts) and B-frame composition offsets are
++       untouched. Guarded by the suite's DTS/AVSync/composition-offset assertions
++       on the HEVC-in-MP4 fixtures (FixtureFactory codec: .hevc). */
++    case AV_CODEC_ID_HEVC:
+         sti->need_parsing = AVSTREAM_PARSE_HEADERS;
+         break;
+     default:

@@ -16,10 +16,15 @@ set -euo pipefail
 # ----------------------------------------------------------------------------
 # We consume the blessed FFmpeg release tarball and verify it against a pinned
 # SHA-256. The tarball itself is what we republish for LGPL §4(d) compliance.
-# We do NOT fork or submodule FFmpeg: this build applies zero source patches
-# (the URLSession AVIOContext bridge lives in app-side code against the public
-# libav* API, not as an FFmpeg patch). If a patch is ever required, drop a
-# *.patch into scripts/patches/ and it is applied on top of the verified tree.
+# We do NOT fork or submodule FFmpeg. Patches live in scripts/patches/ and are
+# applied on top of the verified tree (see fetch-ffmpeg.sh). Currently ONE:
+# 0001-hevc-propagate-sps-vui-color.patch — plumbs the HEVC SPS VUI colour info
+# (transfer_characteristics etc.) from the parser to codecpar, which stock
+# FFmpeg does only in the decoder (absent from this decode-disabled build). It
+# is what lets VIDEO-RANGE read PQ/HLG for a bitstream-only-HDR remux. RE-VERIFY
+# it on every FFMPEG_VERSION bump: the sps->vui.common.* struct path is
+# version-specific (confirmed against 8.1.2 hevcdec.c). The URLSession
+# AVIOContext bridge is NOT a patch — it is app-side code on the public API.
 FFMPEG_VERSION="8.1.2"
 FFMPEG_SHA256="464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c"
 FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"

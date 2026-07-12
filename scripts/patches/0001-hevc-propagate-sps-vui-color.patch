@@ -1,0 +1,26 @@
+--- a/libavcodec/hevc/parser.c	2026-07-11 20:45:58
++++ b/libavcodec/hevc/parser.c	2026-07-11 20:45:58
+@@ -94,6 +94,23 @@
+     avctx->profile  = sps->ptl.general_ptl.profile_idc;
+     avctx->level    = sps->ptl.general_ptl.level_idc;
+ 
++    /* Musket: propagate SPS VUI colour info to avctx (→codecpar). The stock
++       parser reads the VUI but only the decoder copies these fields, and this
++       build has no HEVC decoder. Without this, a bitstream-only-HDR remux
++       (mkvmerge writes no Matroska Colour element) surfaces as
++       color_trc=UNSPECIFIED and is declared VIDEO-RANGE=SDR, which AVPlayer
++       rejects for PQ content (CoreMediaErrorDomain -12927). Mirrors hevcdec.c.
++       Container colour still wins: avformat restores it over codecpar in
++       parameters_from_context, so this only fills a silent container. */
++    if (sps->vui.common.colour_description_present_flag) {
++        avctx->color_primaries = sps->vui.common.colour_primaries;
++        avctx->color_trc       = sps->vui.common.transfer_characteristics;
++        avctx->colorspace      = sps->vui.common.matrix_coeffs;
++    }
++    if (sps->vui.common.video_signal_type_present_flag)
++        avctx->color_range = sps->vui.common.video_full_range_flag
++                                 ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
++
+     if (sps->vps->vps_timing_info_present_flag) {
+         num = sps->vps->vps_num_units_in_tick;
+         den = sps->vps->vps_time_scale;

@@ -1,0 +1,20 @@
+--- a/libavformat/matroskadec.c	2026-07-11 21:03:25
++++ b/libavformat/matroskadec.c	2026-07-11 21:03:25
+@@ -3015,8 +3015,15 @@
+         bytestream_put_le32(&cropping, track->video.pixel_cropl);
+         bytestream_put_le32(&cropping, track->video.pixel_cropr);
+     }
+-    if (par->codec_id != AV_CODEC_ID_HEVC)
+-        sti->need_parsing = AVSTREAM_PARSE_HEADERS;
++    /* Musket: also parse headers for HEVC. Stock matroskadec excludes HEVC here,
++       so its parser never runs during find_stream_info and codecpar colour info
++       (transfer_characteristics) is never filled from the SPS VUI — a
++       bitstream-only-HDR remux then reads as SDR (see the parser.c patch).
++       PARSE_HEADERS only fills stream parameters; it does NOT repack packets and
++       the HEVC parser still never sets has_b_frames, so packet framing and the
++       dts==pts behaviour the engine's DTSReconstruction relies on are unchanged.
++       Guarded by the suite's DTS/AVSync/composition-offset assertions. */
++    sti->need_parsing = AVSTREAM_PARSE_HEADERS;
+ 
+     if (track->default_duration) {
+         int div = track->default_duration <= INT64_MAX ? 1 : 2;

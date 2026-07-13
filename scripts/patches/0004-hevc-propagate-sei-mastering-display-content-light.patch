@@ -1,0 +1,142 @@
+--- a/libavcodec/h2645_sei.h	2026-07-13 12:00:00
++++ b/libavcodec/h2645_sei.h	2026-07-13 12:00:00
+@@ -177,4 +177,11 @@
+ 
+ int ff_h2645_sei_to_context(AVCodecContext *avctx, H2645SEI *sei);
+ 
++/* Musket: lift ONLY the static HDR10 metadata (mastering-display + content-light)
++   from decoded SEI into avctx->coded_side_data. Unlike ff_h2645_sei_to_context()
++   (which targets decoded_side_data, a bucket that avcodec_parameters_from_context()
++   does NOT propagate to codecpar), coded_side_data IS propagated, so movenc reads
++   it and emits the mdcv/clli boxes on a decode-less stream-copy. */
++int ff_h2645_sei_to_coded_side_data(AVCodecContext *avctx, const H2645SEI *sei);
++
+ #endif /* AVCODEC_H2645_SEI_H */
+--- a/libavcodec/h2645_sei.c	2026-07-13 12:00:00
++++ b/libavcodec/h2645_sei.c	2026-07-13 12:00:00
+@@ -933,6 +933,106 @@
+ {
+     return h2645_sei_to_side_data(avctx, sei, &avctx->decoded_side_data,
+                                   &avctx->nb_decoded_side_data);
++}
++
++/* Musket: lift ONLY the static HDR10 metadata (mastering-display + content-light)
++   from decoded SEI into avctx->coded_side_data. This build has no HEVC decoder, so
++   the decoder's SEI->side-data export (h2645_sei_to_side_data, above) never runs; and
++   even in a full build that export targets avctx->decoded_side_data, which
++   avcodec_parameters_from_context() does NOT propagate to codecpar. Only
++   coded_side_data is propagated (libavcodec/codec_par.c), which is the sole bucket
++   movenc reads for the mdcv/clli boxes (mov_write_mdcv_tag/mov_write_clli_tag). So a
++   bitstream-only-HDR remux (mkvmerge writes no container mastering metadata) emits a
++   colr box but no mdcv/clli, and AVFoundation refuses HDR10 presentation on an
++   external HDMI display. Calling this from the HEVC parser (which decodes the SEI but,
++   unlike the decoder, never exported it) closes that gap without a decoder.
++
++   Uses the same rescale/validation as the mastering/content-light branches of
++   h2645_sei_to_side_data(), and the same alloc + av_packet_side_data_add() convention
++   as matroskadec's container-colour path. av_packet_side_data_add() REPLACES an
++   existing entry of the same type in place, so the per-frame SEI seen while parsing
++   (find_stream_info reads several packets) does not accumulate duplicate entries — it
++   is the dedup guard. Only static metadata is lifted; per-frame dynamic SEI (HDR10+,
++   DV RPU) is left in-band, where stream-copy preserves it untouched. */
++int ff_h2645_sei_to_coded_side_data(AVCodecContext *avctx, const H2645SEI *sei)
++{
++    if (sei->mastering_display.present) {
++        // HEVC uses a g,b,r ordering, which we convert to a more natural r,g,b
++        const int mapping[3] = {2, 0, 1};
++        const int chroma_den = 50000;
++        const int luma_den = 10000;
++        size_t size = 0;
++        AVMasteringDisplayMetadata *metadata = av_mastering_display_metadata_alloc_size(&size);
++
++        if (!metadata)
++            return AVERROR(ENOMEM);
++
++        metadata->has_luminance = 1;
++        metadata->has_primaries = 1;
++
++        for (int i = 0; i < 3; i++) {
++            const int j = mapping[i];
++            metadata->display_primaries[i][0].num = sei->mastering_display.display_primaries[j][0];
++            metadata->display_primaries[i][0].den = chroma_den;
++            metadata->has_primaries &= sei->mastering_display.display_primaries[j][0] >= 5 &&
++                                       sei->mastering_display.display_primaries[j][0] <= 37000;
++
++            metadata->display_primaries[i][1].num = sei->mastering_display.display_primaries[j][1];
++            metadata->display_primaries[i][1].den = chroma_den;
++            metadata->has_primaries &= sei->mastering_display.display_primaries[j][1] >= 5 &&
++                                       sei->mastering_display.display_primaries[j][1] <= 42000;
++        }
++        metadata->white_point[0].num = sei->mastering_display.white_point[0];
++        metadata->white_point[0].den = chroma_den;
++        metadata->has_primaries &= sei->mastering_display.white_point[0] >= 5 &&
++                                   sei->mastering_display.white_point[0] <= 37000;
++
++        metadata->white_point[1].num = sei->mastering_display.white_point[1];
++        metadata->white_point[1].den = chroma_den;
++        metadata->has_primaries &= sei->mastering_display.white_point[1] >= 5 &&
++                                   sei->mastering_display.white_point[1] <= 42000;
++
++        metadata->max_luminance.num = sei->mastering_display.max_luminance;
++        metadata->max_luminance.den = luma_den;
++        metadata->has_luminance &= sei->mastering_display.max_luminance >= 50000 &&
++                                   sei->mastering_display.max_luminance <= 100000000;
++
++        metadata->min_luminance.num = sei->mastering_display.min_luminance;
++        metadata->min_luminance.den = luma_den;
++        metadata->has_luminance &= sei->mastering_display.min_luminance <= 50000 &&
++                                   sei->mastering_display.min_luminance <
++                                   sei->mastering_display.max_luminance;
++
++        if (avctx->strict_std_compliance >= FF_COMPLIANCE_STRICT)
++            metadata->has_luminance &= sei->mastering_display.min_luminance >= 1;
++
++        if (!av_packet_side_data_add(&avctx->coded_side_data, &avctx->nb_coded_side_data,
++                                     AV_PKT_DATA_MASTERING_DISPLAY_METADATA,
++                                     metadata, size, 0)) {
++            av_freep(&metadata);
++            return AVERROR(ENOMEM);
++        }
++    }
++
++    if (sei->content_light.present) {
++        size_t size = 0;
++        AVContentLightMetadata *metadata = av_content_light_metadata_alloc(&size);
++
++        if (!metadata)
++            return AVERROR(ENOMEM);
++
++        metadata->MaxCLL  = sei->content_light.max_content_light_level;
++        metadata->MaxFALL = sei->content_light.max_pic_average_light_level;
++
++        if (!av_packet_side_data_add(&avctx->coded_side_data, &avctx->nb_coded_side_data,
++                                     AV_PKT_DATA_CONTENT_LIGHT_LEVEL,
++                                     metadata, size, 0)) {
++            av_freep(&metadata);
++            return AVERROR(ENOMEM);
++        }
++    }
++
++    return 0;
+ }
+ 
+ void ff_h2645_sei_reset(H2645SEI *s)
+--- a/libavcodec/hevc/parser.c	2026-07-13 12:00:00
++++ b/libavcodec/hevc/parser.c	2026-07-13 12:00:00
+@@ -257,6 +257,16 @@
+             } else if (ctx->sei.picture_timing.picture_struct == HEVC_SEI_PIC_STRUCT_FRAME_TRIPLING) {
+                 s->repeat_pict = 2;
+             }
++            /* Musket: at the first slice NAL of this access unit the SEI prefix NALs
++               have already been decoded into ctx->sei (they precede the slice), so lift
++               any static HDR10 metadata into avctx->coded_side_data now. This build has
++               no HEVC decoder, so without this the mastering-display/content-light SEI
++               is never surfaced and movenc writes no mdcv/clli boxes — a
++               bitstream-only-HDR remux then fails external-display HDR10 presentation.
++               No-op unless present; replaces in place, so it never accumulates. This is
++               the SEI counterpart to the SPS-VUI colour propagation above; it needs the
++               HEVC parser to run, which the matroskadec/mov need_parsing patches enable. */
++            ff_h2645_sei_to_coded_side_data(avctx, &ctx->sei.common);
+             ret = hevc_parse_slice_header(s, nal, avctx);
+             if (ret)
+                 return ret;

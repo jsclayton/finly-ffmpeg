@@ -4,6 +4,9 @@
 # Per-arch build trees and intermediate installs
 /build/
 
+# Demo app's local xcodebuild output (playlist dumps, DerivedData-style artifacts)
+/Examples/MusketPlayer/build/
+
 # Pipeline outputs: xcframeworks, exported headers, LGPL bundle
 /artifacts/
 

@@ -10,7 +10,9 @@
 source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 
 XCF="${ARTIFACTS_DIR}/xcframework"
-INC="${ROOT_DIR}/Sources/CFFmpeg/include"
+# The canonical header export from make-xcframeworks.sh — present in this repo and in the
+# carved-out FFmpeg build repo alike (Sources/CFFmpeg is engine-side and does not travel).
+INC="${ARTIFACTS_DIR}/include"
 SLICE="ios-arm64_x86_64-simulator"
 WORK="${BUILD_DIR}/smoketest"
 TRIPLE="arm64-apple-ios${IOS_MIN_VERSION}-simulator"
@@ -20,7 +22,10 @@ TRIPLE="arm64-apple-ios${IOS_MIN_VERSION}-simulator"
 
 mkdir -p "${WORK}"
 cat > "${WORK}/probe.c" <<'EOF'
-#include "CFFmpeg.h"
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libavutil/mem.h>
+#include <libavutil/version.h>
 #include <stdio.h>
 int main(void) {
     unsigned v = avformat_version();

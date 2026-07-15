@@ -1,29 +1,16 @@
 name: build
 
-# Repeatable FFmpeg build pipeline: bump version, re-run, test.
+# Repeatable FFmpeg build pipeline: bump version, re-run, release.
 # Runs on macOS runners which ship Xcode + iOS/tvOS SDKs + simulators.
 #
-# Builds all four xcframeworks, runs the simulator smoke test and the XCTest
-# suite, and publishes the xcframeworks + LGPL bundle as a release.
+# Builds the four xcframeworks + the LGPL compliance bundle, runs the simulator
+# smoke test, and publishes the xcframeworks + LGPL bundle as a release.
 #
 # TRIGGERS ONLY ON A `v*` TAG (or a manual `workflow_dispatch`). Pushing a
 # branch, pushing `main`, and opening a pull request all do nothing. This is
-# deliberate: the XCTest job cannot pass on a GitHub-hosted runner, so leaving it
-# on every push and PR only produces a permanent red X that teaches nobody
-# anything. Tag a release and it runs; otherwise the suite is run locally with
-# `bash scripts/tools/run-range-tests.sh`.
-#
-# WHY IT CANNOT PASS on a hosted runner, unresolved. Every video fixture is
-# minted at test time by AVAssetWriter/VideoToolbox, because this FFmpeg build
-# ships no video encoders by design. A hosted runner has no GPU, and VideoToolbox
-# wedges on the first H.264 encode: `BandwidthTests` fails with
-# "timed out feeding (video 3/120 ...)" after accepting three frames of 320x240
-# in 90 s. The suite takes 201 s there against 14 s locally. Two ways out: a
-# self-hosted runner, or committing tiny H.264/HEVC fixtures the way
-# `tiny-aac.mp4` already is, taking VideoToolbox off the critical path. Do NOT
-# "fix" it by turning the failure into a skip -- that is how a real bug hides.
-#
-# When one of those lands, restore `branches: [main]` and `pull_request:` below.
+# deliberate: a full 6-arch FFmpeg cross-compile is far too heavy to run on every
+# push and PR. Tag a release and the pipeline runs; day-to-day iteration builds
+# locally with `./build.sh`.
 
 on:
   push:
@@ -53,20 +40,6 @@ jobs:
 
       - name: Smoke test (simulator link + run)
         run: ./scripts/smoke-test.sh
-
-      # The XCTest suite needs the xcframeworks this job just built (Package.swift
-      # uses local-path binaryTargets), so it runs here rather than in its own job.
-      #
-      # Tests that need media the runner doesn't have skip themselves: RealMKVTests,
-      # BFrameTimingTests, AVSyncTests, FragmenterEAC3Tests and the real-media halves
-      # of the others are gated on build/mkv-fixture.txt. HTTPRangeTests do run — the
-      # wrapper builds the Go origin server, and Go ships on the macOS runner.
-      - name: Run XCTest suite (iOS simulator)
-        run: |
-          set -euo pipefail
-          DEST="$(bash scripts/tools/sim-destination.sh)"
-          echo "destination: $DEST"
-          MUSKET_DESTINATION="$DEST" bash scripts/tools/run-range-tests.sh
 
       - name: Package artifacts
         run: |

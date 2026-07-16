@@ -6,7 +6,7 @@
      }
 -    if (par->codec_id != AV_CODEC_ID_HEVC)
 -        sti->need_parsing = AVSTREAM_PARSE_HEADERS;
-+    /* Musket: also parse headers for HEVC. Stock matroskadec excludes HEVC here,
++    /* finly-ffmpeg: also parse headers for HEVC. Stock matroskadec excludes HEVC here,
 +       so its parser never runs during find_stream_info and codecpar colour info
 +       (transfer_characteristics) is never filled from the SPS VUI — a
 +       bitstream-only-HDR remux then reads as SDR (see the parser.c patch).

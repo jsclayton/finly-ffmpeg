@@ -4,7 +4,7 @@
  
  int ff_h2645_sei_to_context(AVCodecContext *avctx, H2645SEI *sei);
  
-+/* Musket: lift ONLY the static HDR10 metadata (mastering-display + content-light)
++/* finly-ffmpeg: lift ONLY the static HDR10 metadata (mastering-display + content-light)
 +   from decoded SEI into avctx->coded_side_data. Unlike ff_h2645_sei_to_context()
 +   (which targets decoded_side_data, a bucket that avcodec_parameters_from_context()
 +   does NOT propagate to codecpar), coded_side_data IS propagated, so movenc reads
@@ -20,7 +20,7 @@
                                    &avctx->nb_decoded_side_data);
 +}
 +
-+/* Musket: lift ONLY the static HDR10 metadata (mastering-display + content-light)
++/* finly-ffmpeg: lift ONLY the static HDR10 metadata (mastering-display + content-light)
 +   from decoded SEI into avctx->coded_side_data. This build has no HEVC decoder, so
 +   the decoder's SEI->side-data export (h2645_sei_to_side_data, above) never runs; and
 +   even in a full build that export targets avctx->decoded_side_data, which
@@ -127,7 +127,7 @@
              } else if (ctx->sei.picture_timing.picture_struct == HEVC_SEI_PIC_STRUCT_FRAME_TRIPLING) {
                  s->repeat_pict = 2;
              }
-+            /* Musket: at the first slice NAL of this access unit the SEI prefix NALs
++            /* finly-ffmpeg: at the first slice NAL of this access unit the SEI prefix NALs
 +               have already been decoded into ctx->sei (they precede the slice), so lift
 +               any static HDR10 metadata into avctx->coded_side_data now. This build has
 +               no HEVC decoder, so without this the mastering-display/content-light SEI

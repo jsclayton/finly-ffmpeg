@@ -4,7 +4,7 @@
      case AV_CODEC_ID_AV1:
          /* field_order detection of H264 requires parsing */
      case AV_CODEC_ID_H264:
-+    /* Musket: also parse headers for HEVC. Stock mov omits HEVC from this
++    /* finly-ffmpeg: also parse headers for HEVC. Stock mov omits HEVC from this
 +       stsd switch, so need_parsing stays NONE (except the all-keyframe stss
 +       fallback below) and the HEVC parser never runs during find_stream_info —
 +       codecpar colour (transfer_characteristics) is then never filled from the

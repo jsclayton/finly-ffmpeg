@@ -1,10 +1,19 @@
 # finly-ffmpeg
 
-The **FFmpeg build pipeline only** — a repeatable cross-compile of FFmpeg for
-Apple platforms, packaged as dynamic-framework xcframeworks plus an LGPL bundle.
-There is **no engine, app, or server code here, and none should ever be added**:
-the consuming demux/remux engine lives in a separate private repository and
-depends on tagged releases of this repo.
+The **FFmpeg build pipeline** — a repeatable cross-compile of FFmpeg for Apple
+platforms, packaged as dynamic-framework xcframeworks plus an LGPL bundle — and
+`CFFmpeg`, the C-interop module that surfaces the libav* API to Swift. There is
+**no engine, app, or server code here, and none should ever be added**: the
+consuming demux/remux engine lives in a separate private repository and depends
+on tagged releases of this repo.
+
+**Where the line falls.** `CFFmpeg` is the Swift-facing half of the *build*, not
+the engine. It carries only what Swift cannot see on its own — C bitfields
+(`AVIndexEntry.flags`, `.size`) and function-like macros (`AVERROR*`,
+`AVSEEK_*`) — as the `cff_*` shims in `Sources/CFFmpeg/include/CFFmpeg.h`. It
+belongs here because it is version-locked to the libav* headers this pipeline
+produces: bump FFmpeg and the shims are what must still compile. Anything that
+knows what a *remux* is belongs in the engine repo instead.
 
 ## Build
 
@@ -15,6 +24,14 @@ depends on tagged releases of this repo.
 
 Everything downstream reads its knobs from `scripts/config.sh`. Outputs land
 under `artifacts/`.
+
+**`./build.sh` must run before this package will resolve.** `Package.swift`'s
+binary targets point at `artifacts/xcframework/`, which is gitignored, so a
+fresh clone has no xcframeworks to bind and SwiftPM fails to resolve until the
+build has produced them. `make-xcframeworks.sh` also populates the generated
+`libav*`/`libsw*` header trees under `Sources/CFFmpeg/include/` (tracked: only
+`CFFmpeg.h`, `module.modulemap`, `shim.c`). This is the intended shape while the
+repo is private — see "Consumption" in the README.
 
 ## Bumping FFmpeg
 

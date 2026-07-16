@@ -88,6 +88,23 @@ texts — everything a recipient needs to rebuild and relink. See `NOTICE.md`.
 
 ## Consumption
 
-Consume tagged releases from Swift Package Manager with
-`.binaryTarget(url:checksum:)` pointing at the per-framework `.xcframework.zip`
-assets (a release publishes `checksums.txt` alongside them).
+The package vends one library product, **`CFFmpeg`** — the C-interop module that
+surfaces the libav* API to Swift — with the four xcframeworks behind it.
+
+**Today (repo private): build first, then consume by path.** `Package.swift`'s
+binary targets point at `artifacts/xcframework/`, which is gitignored, so a
+fresh clone will not resolve until `./build.sh` has produced the frameworks:
+
+```bash
+git clone <this repo> && cd finly-ffmpeg && ./build.sh
+```
+
+Consumers then depend on the local checkout — `.package(path: "…")`, or an Xcode
+local package override — and link `.product(name: "CFFmpeg", package: …)`.
+
+**Once public:** a `v*` tag publishes the per-framework `.xcframework.zip`
+assets plus `checksums.txt`, and the binary targets flip to
+`.binaryTarget(url:checksum:)` so consumers resolve tagged releases without
+building FFmpeg themselves. Both halves of that flip ship together: SwiftPM
+cannot fetch binary targets from a private repo's release assets, because it
+requires an unauthenticated URL.

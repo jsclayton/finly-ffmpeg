@@ -7,6 +7,17 @@
 # Pipeline outputs: xcframeworks, exported headers, LGPL bundle
 /artifacts/
 
+# Generated FFmpeg headers vendored into the CFFmpeg module by the build.
+# CFFmpeg.h + module.modulemap + shim.c are tracked; the vendored header trees
+# (libavutil/libavcodec/libavformat/libswresample) are not.
+/Sources/CFFmpeg/include/libav*/
+/Sources/CFFmpeg/include/libsw*/
+
+# SwiftPM
+/.build/
+/.swiftpm/
+Package.resolved
+
 # Local build logs
 /build-log.txt
 

@@ -25,13 +25,11 @@ knows what a *remux* is belongs in the engine repo instead.
 Everything downstream reads its knobs from `scripts/config.sh`. Outputs land
 under `artifacts/`.
 
-**`./build.sh` must run before this package will resolve.** `Package.swift`'s
-binary targets point at `artifacts/xcframework/`, which is gitignored, so a
-fresh clone has no xcframeworks to bind and SwiftPM fails to resolve until the
-build has produced them. `make-xcframeworks.sh` also populates the generated
-`libav*`/`libsw*` header trees under `Sources/CFFmpeg/include/` (tracked: only
-`CFFmpeg.h`, `module.modulemap`, `shim.c`). This is the intended shape while the
-repo is private — see "Consumption" in the README.
+**Consumers resolve tagged releases** (`v{ffmpeg}-{N}`, pinned `.exact`); a git
+checkout compiles alone because the FFmpeg API headers under
+`Sources/CFFmpeg/include/` are **tracked** (a diff there means the FFmpeg
+version changed). Working ON this package still requires `./build.sh` first —
+the local override path binds against `artifacts/`.
 
 ## Bumping FFmpeg
 
@@ -73,6 +71,9 @@ preserve both properties, or B-frame composition timing breaks downstream.
 
 ## Releases
 
-Fire from `v*` tags (or manual `workflow_dispatch`) — see
-`.github/workflows/ci.yml`. A full 6-arch cross-compile is too heavy for
-per-push CI, so day-to-day iteration builds locally with `./build.sh`.
+`bash scripts/release.sh` — from the locally built, verified artifacts (zips +
+checksums + Package.swift rewrite + tag + gh release). The `v*`-tag GitHub
+Action is a reproducibility CHECK, never the publisher: released bytes must
+match the committed checksums, and only the local build is the one the engine
+suite verified. Release immutability is ON — a deleted release burns its tag
+name; increment `N`, never re-cut a tag.

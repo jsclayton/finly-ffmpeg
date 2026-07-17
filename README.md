@@ -91,20 +91,29 @@ texts — everything a recipient needs to rebuild and relink. See `NOTICE.md`.
 The package vends one library product, **`CFFmpeg`** — the C-interop module that
 surfaces the libav* API to Swift — with the four xcframeworks behind it.
 
-**Today (repo private): build first, then consume by path.** `Package.swift`'s
-binary targets point at `artifacts/xcframework/`, which is gitignored, so a
-fresh clone will not resolve until `./build.sh` has produced the frameworks:
+Pin a tagged release `.exact` — tags are `v{ffmpeg}-{N}` (semver pre-releases,
+deliberately: a binary-artifact dependency is bumped on purpose, never by range
+resolution):
 
-```bash
-git clone <this repo> && cd finly-ffmpeg && ./build.sh
+```swift
+.package(url: "https://github.com/jsclayton/finly-ffmpeg.git", exact: "8.1.2-2")
+// product: .product(name: "CFFmpeg", package: "finly-ffmpeg")
 ```
 
-Consumers then depend on the local checkout — `.package(path: "…")`, or an Xcode
-local package override — and link `.product(name: "CFFmpeg", package: …)`.
+The checkout compiles alone: the FFmpeg API headers under
+`Sources/CFFmpeg/include/` are tracked, and the four binary targets download
+checksummed `.xcframework.zip` release assets. For working ON this package,
+consume a local checkout via an Xcode local-package override (and run
+`./build.sh` there first).
 
-**Once public:** a `v*` tag publishes the per-framework `.xcframework.zip`
-assets plus `checksums.txt`, and the binary targets flip to
-`.binaryTarget(url:checksum:)` so consumers resolve tagged releases without
-building FFmpeg themselves. Both halves of that flip ship together: SwiftPM
-cannot fetch binary targets from a private repo's release assets, because it
-requires an unauthenticated URL.
+## Releasing
+
+`bash scripts/release.sh` — cuts a release from the **locally built,
+verified** artifacts: zips the xcframeworks, computes SwiftPM checksums from
+those exact bytes, rewrites `Package.swift` to this tag's asset URLs, commits,
+tags `v{ffmpeg}-{N}`, pushes, and uploads the assets + LGPL bundle. The
+tag-triggered GitHub Action is a from-scratch reproducibility check only — it
+never publishes, because runner bytes would not match the committed checksums.
+GitHub **release immutability** is enabled: published tags and assets lock,
+and a deleted release burns its tag name forever — fix a bad release by
+incrementing `N`, never by re-cutting.

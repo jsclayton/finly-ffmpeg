@@ -3,8 +3,11 @@ name: build
 # Repeatable FFmpeg build pipeline: bump version, re-run, release.
 # Runs on macOS runners which ship Xcode + iOS/tvOS SDKs + simulators.
 #
-# Builds the four xcframeworks + the LGPL compliance bundle, runs the simulator
-# smoke test, and publishes the xcframeworks + LGPL bundle as a release.
+# Builds the four xcframeworks + the LGPL compliance bundle and runs the
+# simulator smoke test — a from-scratch REPRODUCIBILITY CHECK, not the release
+# publisher. Releases are cut by scripts/release.sh from the locally built,
+# suite-verified artifacts: the checksums in Package.swift must match the exact
+# bytes uploaded, so a runner rebuild must never overwrite release assets.
 #
 # TRIGGERS ONLY ON A `v*` TAG (or a manual `workflow_dispatch`). Pushing a
 # branch, pushing `main`, and opening a pull request all do nothing. This is
@@ -61,26 +64,3 @@ jobs:
           name: xcframeworks
           path: dist/
           retention-days: 14
-
-  release:
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v4
-      - run: ./build.sh
-      - name: Package
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          for fw in artifacts/xcframework/*.xcframework; do
-            name="$(basename "$fw" .xcframework)"
-            ( cd artifacts/xcframework && zip -qry "../../dist/${name}.xcframework.zip" "${name}.xcframework" )
-          done
-          cp artifacts/lgpl/*.tar.gz dist/
-          ( cd dist && for z in *.xcframework.zip; do shasum -a 256 "$z"; done > checksums.txt )
-      - name: Publish release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          body_path: dist/checksums.txt

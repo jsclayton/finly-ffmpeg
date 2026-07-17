@@ -23,6 +23,12 @@
 #   6. gh release create with the zips, the LGPL bundle, and checksums.txt
 #
 # Requires: a clean tree, artifacts/ from a ./build.sh run, gh authenticated.
+#
+# NEVER REUSE A TAG. The repo has GitHub release immutability enabled (tags and
+# assets lock at publish) — a deleted release burns its tag name forever, and
+# that is the guarantee consumers' checksums rest on. A broken release is fixed
+# by incrementing N, never by re-cutting the same tag (learned on v8.1.2-1,
+# whose checkout was missing the FFmpeg headers and whose name is now retired).
 
 set -euo pipefail
 

@@ -60,6 +60,11 @@ preserve both properties, or B-frame composition timing breaks downstream.
 - **No video encoders or decoders, ever.** Video is stream-copied by consumers.
 - **Keep the repo generic:** no product names, no private paths or hostnames, no
   media-library statistics — in code, comments, or commit messages.
+- **Linear history — NEVER create a merge commit.** Squash + merge (the default),
+  or rebase + fast-forward when the branch's individual commits are valuable
+  history. Even history imports from another repo (filter-repo grafts) are
+  rebased onto the target and fast-forwarded — never
+  `git merge --allow-unrelated-histories`.
 
 ## Shell gotchas
 

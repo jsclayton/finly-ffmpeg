@@ -17,13 +17,15 @@ set -euo pipefail
 # We consume the blessed FFmpeg release tarball and verify it against a pinned
 # SHA-256. The tarball itself is what we republish for LGPL §4(d) compliance.
 # We do NOT fork or submodule FFmpeg. Patches live in scripts/patches/ and are
-# applied on top of the verified tree (see fetch-ffmpeg.sh). Currently FOUR
+# applied on top of the verified tree (see fetch-ffmpeg.sh). Currently FIVE
 # (full rationale in README.md): 0001 fills colour from the HEVC SPS VUI in the
 # parser (a decode-disabled build otherwise reads no colour and HDR is declared
 # SDR); 0002/0003 make matroskadec/mov run HEVC header parsing so 0001 takes
 # effect for MKV/MP4; 0004 lifts mastering-display + content-light SEI into
-# coded_side_data so movenc writes mdcv/clli on a stream-copy. RE-VERIFY all
-# four on every FFMPEG_VERSION bump: parser struct paths and demuxer hook sites
+# coded_side_data so movenc writes mdcv/clli on a stream-copy; 0005 teaches the
+# dovi_rpu bitstream filter to convert dual-layer Dolby Vision profile 7 to
+# single-layer 8.1 (pure RPU/NAL work — still no decoder). RE-VERIFY all five
+# on every FFMPEG_VERSION bump: parser struct paths and demuxer hook sites
 # are version-specific (confirmed against 8.1.2). The URLSession AVIOContext
 # bridge is NOT a patch — it is app-side code on the public API.
 FFMPEG_VERSION="8.1.2"
@@ -83,7 +85,11 @@ FF_COMPONENTS=(
   # --- framing: video passthrough keyframe detection + audio framing ---
   --enable-parser=h264,hevc,aac,ac3,dca,mlp,flac,opus,vorbis,mpegaudio
   # --- bitstream filters: annexb<->mp4, tagging, extradata, adts->asc ---
-  --enable-bsf=h264_mp4toannexb,hevc_mp4toannexb,h264_metadata,hevc_metadata,extract_extradata,aac_adtstoasc,dca_core,eac3_core
+  # dovi_rpu is the Dolby Vision one (patch 0005's convert=p81). It is the only
+  # entry here that pulls extra machinery: configure selects cbs_h265 + cbs_av1 +
+  # dovi_rpudec + dovi_rpuenc with it. That is the whole cost of the DV conversion
+  # path; measure it against the previous artifacts on any change.
+  --enable-bsf=h264_mp4toannexb,hevc_mp4toannexb,h264_metadata,hevc_metadata,extract_extradata,aac_adtstoasc,dca_core,eac3_core,dovi_rpu
   # --- audio decoders: transcode sources + probe correctness (NO video decoders) ---
   --enable-decoder=dca,truehd,mlp,aac,aac_latm,ac3,eac3,flac,opus,vorbis,mp3,pcm_s16le,pcm_s24le,pcm_bluray
   # --- text-subtitle decoders (WebVTT rendition path) ---

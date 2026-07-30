@@ -99,7 +99,7 @@ git tag "$TAG"
 git push origin main "$TAG"
 
 gh release create "$TAG" \
-  --title "${TAG} — FFmpeg ${VER}, patches 0001–0004" \
+  --title "${TAG} — FFmpeg ${VER}, patches 0001–0005" \
   --notes-file "$DIST/checksums.txt" \
   "$DIST"/*.xcframework.zip "$DIST"/*.tar.gz "$DIST/checksums.txt"
 

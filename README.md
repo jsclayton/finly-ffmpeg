@@ -57,7 +57,7 @@ Also disabled by design: `avdevice`, `swscale`, `avfilter`, programs
 ## Bumping FFmpeg
 
 It is a two-line change in `scripts/config.sh` — `FFMPEG_VERSION` and
-`FFMPEG_SHA256` — then re-run `./build.sh`. **Re-verify the four vendored
+`FFMPEG_SHA256` — then re-run `./build.sh`. **Re-verify the five vendored
 patches still apply on every bump:** their struct paths and hook sites are
 version-specific. The `bump-ffmpeg` skill (`.claude/skills/bump-ffmpeg`) walks
 the full procedure.
@@ -66,7 +66,8 @@ the full procedure.
 
 Applied to a pristine source tree by `scripts/fetch-ffmpeg.sh`; they exist
 because this is a decoder-less build and colour/HDR metadata that a full FFmpeg
-would recover in the decoder must instead be lifted in the parser:
+would recover in the decoder must instead be lifted in the parser (0005 is the
+exception — it is a bitstream-filter capability, not a metadata rescue):
 
 - **0001** — makes the HEVC parser fill `color_trc`/`primaries`/`colorspace`/
   `range` from the SPS VUI. Without it a decoder-less build reads no colour
@@ -77,6 +78,13 @@ would recover in the decoder must instead be lifted in the parser:
 - **0004** — lifts HEVC mastering-display + content-light SEI into
   `coded_side_data`, so `movenc` writes the `mdcv`/`clli` boxes on a
   stream-copied HDR10 output.
+- **0005** — adds a `convert=p81` option to the upstream `dovi_rpu` bitstream
+  filter: dual-layer Dolby Vision profile 7 in, single-layer profile 8.1 out.
+  Drops the interleaved `UNSPEC63` enhancement-layer NALs (upstream inspects
+  only the *last* NAL of an access unit, so its own `strip` misses every one of
+  them), clears `disable_residual_flag`/`el_spatial_resampling_filter_flag` and
+  the NLQ block in the RPU, and rewrites the configuration record on
+  `par_out`. Still pure bitstream work — nothing is decoded.
 
 ## Licensing
 

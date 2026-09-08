@@ -23,8 +23,10 @@ set -euo pipefail
 # SDR); 0002/0003 make matroskadec/mov run HEVC header parsing so 0001 takes
 # effect for MKV/MP4; 0004 lifts mastering-display + content-light SEI into
 # coded_side_data so movenc writes mdcv/clli on a stream-copy; 0005 teaches the
-# dovi_rpu bitstream filter to convert dual-layer Dolby Vision profile 7 to
-# single-layer 8.1 (pure RPU/NAL work — still no decoder). RE-VERIFY all five
+# dovi_rpu bitstream filter to convert a Dolby Vision profile 7 RPU and
+# configuration record to single-layer 8.1 (pure RPU work — still no decoder;
+# the enhancement layer is removed ahead of it by upstream's dovi_split, and
+# 0005 removes no upstream line). RE-VERIFY all five
 # on every FFMPEG_VERSION bump: parser struct paths and demuxer hook sites
 # are version-specific (confirmed against 9.0.1). The URLSession AVIOContext
 # bridge is NOT a patch — it is app-side code on the public API.

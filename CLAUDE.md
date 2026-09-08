@@ -50,9 +50,14 @@ the full procedure.
 - **0004** — lifts HEVC mastering-display + content-light SEI into
   `coded_side_data` so `movenc` writes `mdcv`/`clli` on a stream-copy.
 - **0005** — adds `convert=p81` to the `dovi_rpu` bitstream filter: dual-layer
-  Dolby Vision profile 7 in, single-layer 8.1 out. Rewrites the Dolby Vision
-  configuration record on `par_out`, and drops the enhancement layer's own
-  configuration record (`hvcE`) from it. Pure RPU/NAL work, no decode.
+  Dolby Vision profile 7 in, single-layer 8.1 out. Mutates three RPU fields and
+  rewrites the Dolby Vision configuration record on `par_out`. Nothing else:
+  the enhancement layer and its own configuration record (`hvcE`) are removed
+  by upstream's `dovi_split`, which the component set enables and consumers
+  chain ahead of `dovi_rpu` — `dovi_split=mode=bl_rpu` first, then
+  `dovi_rpu=convert=p81`, the first filter's `par_out` carried into the
+  second's `par_in`. The patch removes no upstream line. Pure RPU work, no
+  decode.
 
 0002/0003 enable HEVC parsing via `AVSTREAM_PARSE_HEADERS`, which does **not**
 repack packets and does **not** set `has_b_frames` — any change there MUST

@@ -80,18 +80,14 @@ exception — it is a bitstream-filter capability, not a metadata rescue):
   stream-copied HDR10 output.
 - **0005** — adds a `convert=p81` option to the upstream `dovi_rpu` bitstream
   filter: dual-layer Dolby Vision profile 7 in, single-layer profile 8.1 out.
-  Drops the interleaved `UNSPEC63` enhancement-layer NALs (upstream inspects
-  only the *last* NAL of an access unit, so its own `strip` misses every one of
-  them), sets `disable_residual_flag`, clears
-  `el_spatial_resampling_filter_flag` and the NLQ block in the RPU, and
-  rewrites the Dolby Vision configuration record on `par_out`. From those same
-  output parameters it also drops the enhancement layer's own configuration
-  record (`hvcE`): FFmpeg 9.0 demuxers export it as coded side data and both
-  muxers write it back — `movenc` behind the same compliance gate as the Dolby
-  Vision record, `matroskaenc` with no gate at all — so without the removal a
-  converted single-layer stream would describe an enhancement layer it no
-  longer carries. Still pure bitstream
-  work — nothing is decoded.
+  It sets `disable_residual_flag`, clears `el_spatial_resampling_filter_flag`
+  and the NLQ block in the RPU, and rewrites the Dolby Vision configuration
+  record on `par_out` (`dv_profile` 8, `dv_bl_signal_compatibility_id` 1,
+  `el_present_flag` 0, no metadata compression). That is all it does: the
+  enhancement layer itself, and the layer's own configuration record (`hvcE`),
+  are removed by **upstream's own `dovi_split` filter**, which consumers chain
+  ahead of this one — see *Consumption* below. The patch removes no upstream
+  line. Still pure bitstream work — nothing is decoded.
 
 ## Licensing
 
@@ -105,6 +101,15 @@ texts — everything a recipient needs to rebuild and relink. See `NOTICE.md`.
 
 The package vends one library product, **`CFFmpeg`** — the C-interop module that
 surfaces the libav* API to Swift — with the four xcframeworks behind it.
+
+**The Dolby Vision conversion is a two-filter chain**, in this order:
+`dovi_split=mode=bl_rpu` first, `dovi_rpu=convert=p81` second, with the first
+filter's `par_out` carried into the second's `par_in` — `dovi_rpu` reads and
+mutates the configuration record on those parameters, so the record the first
+filter masked has to be the record the second one sees. The order is forced:
+after `dovi_rpu` has rewritten the record to profile 8.1 there is nothing left
+to tell `dovi_split` what to strip, and `dovi_rpu` alone leaves the enhancement
+layer in the output.
 
 Pin a tagged release `.exact` — tags are `v{ffmpeg}-{N}` (semver pre-releases,
 deliberately: a binary-artifact dependency is bumped on purpose, never by range

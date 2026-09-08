@@ -31,11 +31,10 @@
 #
 # The LGPL bundle is chosen BY VERSION — artifacts/lgpl/finly-ffmpeg-lgpl-
 # {FFMPEG_VERSION}.tar.gz, the exact name package-lgpl.sh writes — never by sort
-# order. An incremental checkout's artifacts/lgpl/ can hold the previous
-# version's bundle as well, and the older version sorts first, so picking the
-# first tarball would ship the wrong corresponding source: a silent LGPL
-# compliance defect. package-lgpl.sh drops bundles of other versions, so the
-# directory holds one bundle and this check confirms it is the right one.
+# order, which would take the older bundle an incremental checkout still has
+# lying about and put the wrong corresponding source in the release, silently.
+# package-lgpl.sh keeps that directory down to one bundle (see its header); this
+# check confirms the one there is the right one.
 #
 # NEVER REUSE A TAG. The repo has GitHub release immutability enabled (tags and
 # assets lock at publish) — a deleted release burns its tag name forever, and
@@ -48,10 +47,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-dry_run=0
+do_dry_run=0
 for a in "$@"; do
   case "$a" in
-    --dry-run) dry_run=1 ;;
+    --dry-run) do_dry_run=1 ;;
     *) echo "unknown flag: $a" >&2; exit 1 ;;
   esac
 done
@@ -75,7 +74,7 @@ last=$(git tag -l "v${VER}-*" | sed -n "s/^v${VER}-\([0-9]*\)$/\1/p" | sort -n |
 N=$(( ${last:-0} + 1 ))
 TAG="v${VER}-${N}"
 
-if [[ "$dry_run" -eq 1 ]]; then
+if [[ "$do_dry_run" -eq 1 ]]; then
   echo "dry-run: would release ${TAG} with ${LGPL_TAR}"
   exit 0
 fi

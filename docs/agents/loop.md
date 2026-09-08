@@ -57,9 +57,12 @@ perl -e 'alarm 1200; exec @ARGV' ./build.sh --smoke
   reasons — and John decides to cut. **Confirmation** follows the release:
   the engine repo's pin-bump ticket runs its suite against the tag; red
   burns one `N` and reopens the work here. Nothing here files a "confirm
-  this" issue. `bash scripts/release.sh --dry-run` runs every release
-  precondition and prints the tag and the LGPL bundle a cut would use,
-  writing nothing — the draft quotes both.
+  this" issue. `bash scripts/release.sh --dry-run` runs the clean-tree,
+  xcframework and LGPL-bundle checks and prints the tag and the bundle a
+  cut would use, then stops: nothing zipped, no `Package.swift` rewrite,
+  no commit, tag, push or release. The draft quotes both. It is not the
+  whole of `release.sh` — `gh` auth and the manifest rewrite are only
+  exercised by the real run.
 
 ## Review duties
 

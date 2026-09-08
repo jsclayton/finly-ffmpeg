@@ -1,6 +1,6 @@
 # finly-ffmpeg
 
-The build pipeline that turns a pinned FFmpeg release into Apple xcframeworks, and the C-interop module that surfaces them to Swift. It exists so that the consuming engine depends on a versioned binary artefact, never on an FFmpeg checkout.
+The build pipeline that turns a pinned FFmpeg release into Apple xcframeworks, and the C-interop module that surfaces them to Swift. It exists so that the consuming engine depends on a versioned binary artifact, never on an FFmpeg checkout.
 
 ## Language
 
@@ -32,7 +32,7 @@ Fast-forward a change onto `main` after it passes the gate. Landing proves the b
 _Avoid_: merge, ship
 
 **Release**:
-Cut a tag `v{ffmpeg}-{N}` from the locally built artefacts with `scripts/release.sh`. Immutable; John's hands only; `N` resets to 1 on a bump.
+Cut a tag `v{ffmpeg}-{N}` from the locally built artifacts with `scripts/release.sh`. Immutable; John's hands only; `N` resets to 1 on a bump.
 _Avoid_: publish, deploy, ship
 
 **Release notes**:
@@ -40,7 +40,7 @@ The short document John reads to decide a release: the breaking changes, then th
 _Avoid_: changelog, summary
 
 **Breaking change**:
-A change a consumer must act on to move to the new tag: a bitstream filter to chain, a chain order, an option or symbol removed or renamed, a library major, a removed component. Its ticket carries the label `breaking` and a `## Consumer-facing change` section that the release notes quote.
+A change a consumer must act on to move to the new tag: a bitstream filter to chain, a chain order, an option or symbol removed or renamed, a library major, a removed component. Its ticket carries the label `breaking` and a `## Consumer-facing change` section that the release notes quote verbatim — written for the consumer, two or three sentences: what changes and what they must do, no process.
 _Avoid_: major, API change
 
 **Confirm**:

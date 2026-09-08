@@ -62,8 +62,9 @@ perl -e 'alarm 1200; exec @ARGV' ./build.sh --smoke
   ticket that moves it — a bitstream filter to chain or a chain order, an
   option or symbol removed or renamed, a library major, a removed
   component — carries the label **`breaking`** and a
-  `## Consumer-facing change` section in its body saying what a consumer
-  must do, which the draft quotes verbatim. **Confirmation** follows the
+  `## Consumer-facing change` section in its body, which the draft quotes
+  verbatim — so it is written for the consumer, in two or three sentences:
+  what changes and what they must do, no process, no ADR citations. **Confirmation** follows the
   release: the engine repo's pin-bump ticket runs its suite against the tag; red
   burns one `N` and reopens the work here. Nothing here files a "confirm
   this" issue. `bash scripts/release.sh --dry-run` runs the clean-tree,

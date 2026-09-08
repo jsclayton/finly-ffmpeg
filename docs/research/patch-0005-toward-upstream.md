@@ -230,16 +230,16 @@ left to tell `dovi_split` what to strip, and because `dovi_rpu` would still be
 seeing interleaved `UNSPEC63` NALs it no longer has code to remove.
 
 **Coordinated release.** The consumer cannot chain a bitstream filter that is
-not compiled into the artefacts, and consumers pin exact tags. So the sequence
+not compiled into the artifacts, and consumers pin exact tags. So the sequence
 is the loop's ordinary one, read through ADR 0003: land the change here on the
 gate (ADR 0001); the conductor drafts release notes naming the new component
 and the new option as consumer-facing changes; John reads them and cuts the
 tag; the consumer's own repository then bumps its pin to that tag, chains the
 filter, and runs its suite — which is the confirmation, and it follows the
 release. A red confirmation burns one `N` and reopens the work here. The
-intermediate state is safe in one direction only: the new artefacts still work
+intermediate state is safe in one direction only: the new artifacts still work
 with the old consumer, because `dovi_split` merely becomes available; the old
-artefacts do not work with the new consumer.
+artifacts do not work with the new consumer.
 
 ### 1.6 Proving equivalence, without carrying media in this repo
 
@@ -295,7 +295,7 @@ follows the release (ADR 0003), not to this repo's gate.
   coded-bitstream layer. Kept NALs are copied from `nal->raw_data` verbatim
   (`dovi_split.c:212-229`), so the repack is byte-preserving, but it is a real
   extra pass over every video packet. Measure it against the previous
-  artefacts, as the `scripts/config.sh` comment already asks for the DV path.
+  artifacts, as the `scripts/config.sh` comment already asks for the DV path.
 * **NAL length-prefix size.** The output prefix size follows
   `par_out->extradata` (`dovi_split.c:123-126`, used at `:179`); in `bl_rpu`
   mode `par_out->extradata` is untouched, so a length-prefixed input stays
@@ -555,7 +555,7 @@ Three things make the case stronger than "the ADR says so":
 `scripts/config.sh` component change, a shrunken patch, and a simulator probe
 assertion that `dovi_split` exists with its `mode` option — all machine-checked
 with no media. The release is John's, made on the release notes (ADR 0003),
-and it is a coordinated one: the tag that adds `dovi_split` to the artefacts
+and it is a coordinated one: the tag that adds `dovi_split` to the artifacts
 must exist before the consumer can chain it (§1.5). The
 byte-equality check of §1.6 against the public FATE sample is the evidence to
 gather **before** proposing the change, because if the two paths do not agree

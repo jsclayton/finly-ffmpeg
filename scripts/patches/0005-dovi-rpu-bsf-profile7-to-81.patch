@@ -1,8 +1,8 @@
---- a/libavcodec/bsf/dovi_rpu.c	2026-07-30 07:32:01
-+++ b/libavcodec/bsf/dovi_rpu.c	2026-07-30 07:32:01
+--- a/libavcodec/bsf/dovi_rpu.c
++++ b/libavcodec/bsf/dovi_rpu.c
 @@ -33,6 +33,14 @@
  
- #include "hevc/hevc.h"
+ #include "libavcodec/hevc/hevc.h"
  
 +/* finly-ffmpeg: `convert` option values. NONE keeps this filter byte-for-byte
 +   what upstream does; P81 turns a dual-layer profile 7 stream into a single-layer
@@ -43,37 +43,23 @@
      if (pkt && !(pkt->flags & AV_PKT_FLAG_KEY))
          flags |= FF_DOVI_COMPRESS_RPU;
      ret = ff_dovi_rpu_generate(&s->enc, metadata, flags, out_rpu, out_size);
-@@ -80,22 +102,50 @@
-                                          CodedBitstreamFragment *au)
- {
-     DoviRpuContext *s = bsf->priv_data;
--    CodedBitstreamUnit *nal = au->nb_units ? &au->units[au->nb_units - 1] : NULL;
-+    CodedBitstreamUnit *nal;
+@@ -84,6 +106,30 @@
      uint8_t *rpu = NULL;
      int rpu_size, ret;
  
-     // HEVC_NAL_UNSPEC62 is Dolby Vision RPU and HEVC_NAL_UNSPEC63 is Dolby Vision EL
--    if (!nal || (nal->type != HEVC_NAL_UNSPEC62 && nal->type != HEVC_NAL_UNSPEC63))
--        return 0;
++    /* finly-ffmpeg: convert=p81 finds the RPU wherever it sits in the access unit
++       rather than only in the last NAL. Upstream's probe below is correct for its
++       own uses -- strip and recompression both no-op harmlessly when the RPU is not
++       last -- but a conversion that no-ops is not harmless: dovi_rpu_init() has
++       already rewritten the configuration record to profile 8.1, so the output
++       would declare 8.1 while still carrying an unconverted profile 7 RPU. This
++       reassigns upstream's own `nal` rather than replacing its initialisation, so
++       it costs no removed line. An access unit with no RPU is left alone, as
++       upstream leaves it. The enhancement layer never reaches this filter on the
++       conversion path: dovi_split=mode=bl_rpu runs ahead of it and removes the
++       UNSPEC63 NALs. `strip` cannot be set here -- dovi_rpu_init() rejects the
++       combination -- so the positional deletion below stays unreachable. */
 +    if (s->convert == DOVI_CONVERT_P81) {
-+        /* finly-ffmpeg: the dual-layer enhancement layer is carried as UNSPEC63
-+           NALs INTERLEAVED into the base layer's own access unit -- one wrapper
-+           per EL NAL, each holding a complete inner NAL -- and they are not last;
-+           the RPU is. The single-unit probe below therefore never sees them:
-+           measured on a real dual-layer remux, `strip=1` deleted every RPU (99 of
-+           99) and left every EL NAL (1124 of 1124) in the output. A single-layer
-+           profile 8.1 stream must carry none of them, so walk the whole fragment.
-+           Descending, because ff_cbs_delete_unit() shifts the tail down; then find
-+           the RPU by search rather than by position, since the deletions moved it. */
-+        for (int i = au->nb_units - 1; i >= 0; i--) {
-+            if (au->units[i].type == HEVC_NAL_UNSPEC63)
-+                ff_cbs_delete_unit(au, i);
-+        }
- 
--    if (s->strip) {
--        ff_cbs_delete_unit(au, au->nb_units - 1);
--        return 0;
--    }
 +        nal = NULL;
 +        for (int i = au->nb_units - 1; i >= 0; i--) {
 +            if (au->units[i].type == HEVC_NAL_UNSPEC62) {
@@ -83,30 +69,17 @@
 +        }
 +        if (!nal)
 +            return 0;
-+    } else {
-+        nal = au->nb_units ? &au->units[au->nb_units - 1] : NULL;
- 
--    if (nal->type == HEVC_NAL_UNSPEC63)
--        return 0;
-+        if (!nal || (nal->type != HEVC_NAL_UNSPEC62 && nal->type != HEVC_NAL_UNSPEC63))
-+            return 0;
- 
-+        if (s->strip) {
-+            ff_cbs_delete_unit(au, au->nb_units - 1);
-+            return 0;
-+        }
-+
-+        if (nal->type == HEVC_NAL_UNSPEC63)
-+            return 0;
 +    }
 +
-     ret = update_rpu(bsf, pkt, 0, nal->data + 2, nal->data_size - 2, &rpu, &rpu_size);
-     if (ret < 0)
-         return ret;
-@@ -201,6 +251,35 @@
+     // HEVC_NAL_UNSPEC62 is Dolby Vision RPU and HEVC_NAL_UNSPEC63 is Dolby Vision EL
+     if (!nal || (nal->type != HEVC_NAL_UNSPEC62 && nal->type != HEVC_NAL_UNSPEC63))
+         return 0;
+@@ -205,6 +251,21 @@
+     if (s->compression == AV_DOVI_COMPRESSION_RESERVED) {
+         av_log(bsf, AV_LOG_ERROR, "Invalid compression level: %d\n", s->compression);
          return AVERROR(EINVAL);
-     }
- 
++    }
++
 +    /* finly-ffmpeg: converting and stripping are contradictory requests, and a
 +       converted stream must not also carry compressed metadata -- ff_dovi_configure()
 +       itself warns that compression "for profile 8 is known to be unsupported by
@@ -120,26 +93,10 @@
 +            return AVERROR(EINVAL);
 +        }
 +        s->compression = AV_DOVI_COMPRESSION_NONE;
-+
-+        /* finly-ffmpeg: FFmpeg 9.0 demuxers export the enhancement layer's own
-+           configuration record as AV_PKT_DATA_HEVC_CONF, and both muxers this build
-+           ships write it back. movenc writes an `hvcE` box (movenc.c:3010-3017)
-+           behind the very gate `dvvC` itself sits behind -- strict_std_compliance
-+           <= FF_COMPLIANCE_UNOFFICIAL (movenc.c:3004-3008) -- so a writer emitting a
-+           Dolby Vision record has this one open too; matroskaenc writes an `hvcE`
-+           BlockAdditionMapping (matroskaenc.c:1789-1803) with no compliance gate at
-+           all. The converted stream carries no enhancement layer and must not
-+           describe one; this mirrors upstream's own removal in dovi_split
-+           (dovi_split.c:117-121, "no longer valid on output"). */
-+        av_packet_side_data_remove(bsf->par_out->coded_side_data,
-+                                   &bsf->par_out->nb_coded_side_data,
-+                                   AV_PKT_DATA_HEVC_CONF);
-+    }
-+
+     }
+ 
      if (s->strip) {
-         av_packet_side_data_remove(bsf->par_out->coded_side_data,
-                                    &bsf->par_out->nb_coded_side_data,
-@@ -224,8 +303,36 @@
+@@ -230,8 +291,43 @@
                  return AVERROR(EINVAL);
              }
  
@@ -150,7 +107,14 @@
 +               -- movenc picks the fourcc off dv_profile -- with no second source of
 +               truth. bl_signal_compatibility_id becomes 1 (HDR10-compatible base);
 +               on the profile 7 input those four bits are RESERVED in a v1.0 dvcC
-+               and hold a meaningless value, so this is a write, never an edit. */
++               and hold a meaningless value, so this is a write, never an edit.
++               el_present_flag is cleared here too, although dovi_split has already
++               cleared it in the record this filter receives -- the enhancement
++               layer, and the layer's own configuration record (exported as
++               AV_PKT_DATA_HEVC_CONF and written back as an `hvcE` box), are both
++               removed upstream by dovi_split=mode=bl_rpu, which consumers chain
++               ahead of this filter and whose par_out must be carried into this
++               filter's par_in. */
 +            if (s->convert == DOVI_CONVERT_P81) {
 +                if (s->dec.cfg.dv_profile != 7) {
 +                    av_log(bsf, AV_LOG_ERROR, "convert=p81 requires a Dolby Vision "
@@ -176,7 +140,7 @@
              av_log(bsf, AV_LOG_WARNING, "No Dolby Vision configuration record "
                     "found? Generating one, but results may be invalid.\n");
              ret = ff_dovi_configure_from_codedpar(&s->enc, bsf->par_out, NULL, s->compression,
-@@ -264,6 +371,10 @@
+@@ -270,6 +366,10 @@
          { "none",       "Don't compress metadata",      0, AV_OPT_TYPE_CONST, {.i64 = 0},                            .flags = FLAGS, .unit = "compression" },
          { "limited",    "Limited metadata compression", 0, AV_OPT_TYPE_CONST, {.i64 = AV_DOVI_COMPRESSION_LIMITED},  .flags = FLAGS, .unit = "compression" },
          { "extended",   "Extended metadata compression",0, AV_OPT_TYPE_CONST, {.i64 = AV_DOVI_COMPRESSION_EXTENDED}, .flags = FLAGS, .unit = "compression" },

@@ -88,5 +88,6 @@ it must use:
 ## Implementers
 
 - **Default model:** opus. Sonnet only when the brief marks every bullet mechanical.
+- **Patches are never mechanical:** any ticket whose touchpoints include `scripts/patches/` — or whose gate could fail there (an `FFMPEG_VERSION` bump) — is briefed as **opus**, never sonnet, and the brief says so. A hunk that stops applying means upstream moved the hook site; deciding whether the patch is still needed, and where it now belongs, is judgment work, not a rebase.
 - **Concurrency:** 1 — and hold it there: every implementer's gate is a full six-slice FFmpeg cross-compile in its own worktree, so two at once double the CPU time of both. Cap 2 only when John says so.
 - **Needs-hands:** TODO: John decides. The current assumption is **yes** — a landed FFmpeg bump or patch change is machine-verified here (build + smoke) but is only *confirmed* when the consumer engine's suite passes against it, which needs John's hands (local override or a tagged release). Everything else in this repo (scripts, docs, CI workflow) is machine-verifiable.

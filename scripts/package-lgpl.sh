@@ -17,6 +17,24 @@ source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 
 BUNDLE_NAME="finly-ffmpeg-lgpl-${FFMPEG_VERSION}"
 BUNDLE_DIR="${ARTIFACTS_DIR}/lgpl/${BUNDLE_NAME}"
+
+# Leave exactly one bundle behind: this version's. An incremental checkout that
+# has been through a bump still holds the previous version's directory and
+# tarball here, and release.sh publishes what it finds — an older bundle would
+# be the wrong corresponding source for the frameworks in the same release, a
+# silent LGPL compliance defect. Dropping the stale ones here (rather than
+# having release.sh refuse when several are present) keeps the incremental
+# build path working with no manual cleanup; a bundle for a version we no
+# longer build is worthless either way, and ./build.sh --clean would have
+# removed it too.
+shopt -s nullglob
+for stale in "${ARTIFACTS_DIR}/lgpl/"finly-ffmpeg-lgpl-*; do
+  [[ "${stale}" == "${BUNDLE_DIR}" || "${stale}" == "${BUNDLE_DIR}.tar.gz" ]] && continue
+  log "removing bundle of another version: $(basename "${stale}")"
+  rm -rf "${stale}"
+done
+shopt -u nullglob
+
 rm -rf "${BUNDLE_DIR}"
 mkdir -p "${BUNDLE_DIR}/scripts"
 

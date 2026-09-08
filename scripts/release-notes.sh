@@ -231,7 +231,10 @@ done <<EOF
 $LANDED
 EOF
 if [[ -z "$breaking" ]]; then
-  add "None. Nothing landed in this range changes what a consumer must do."
+  add "None recorded: no issue landed in this range carries the \`breaking\` label."
+  add ""
+  add "_This section is only as good as the labelling — it reports what the tracker"
+  add "says, not what a reader of the diff would conclude._"
   add ""
 fi
 

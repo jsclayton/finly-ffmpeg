@@ -103,7 +103,7 @@
      ret = update_rpu(bsf, pkt, 0, nal->data + 2, nal->data_size - 2, &rpu, &rpu_size);
      if (ret < 0)
          return ret;
-@@ -201,6 +251,34 @@
+@@ -201,6 +251,35 @@
          return AVERROR(EINVAL);
      }
  
@@ -122,13 +122,14 @@
 +        s->compression = AV_DOVI_COMPRESSION_NONE;
 +
 +        /* finly-ffmpeg: FFmpeg 9.0 demuxers export the enhancement layer's own
-+           configuration record as AV_PKT_DATA_HEVC_CONF, and both muxers write it
-+           back -- movenc.c:3010-3017 as an `hvcE` box, matroskaenc.c:1789-1800 as
-+           an `hvcE` BlockAdditionMapping -- behind the same
-+           strict_std_compliance <= FF_COMPLIANCE_UNOFFICIAL gate that `dvvC` itself
-+           sits behind (movenc.c:3004-3008), so a writer emitting a DV record has
-+           this one open too. The converted stream carries no enhancement layer and
-+           must not describe one; this mirrors upstream's own removal in dovi_split
++           configuration record as AV_PKT_DATA_HEVC_CONF, and both muxers this build
++           ships write it back. movenc writes an `hvcE` box (movenc.c:3010-3017)
++           behind the very gate `dvvC` itself sits behind -- strict_std_compliance
++           <= FF_COMPLIANCE_UNOFFICIAL (movenc.c:3004-3008) -- so a writer emitting a
++           Dolby Vision record has this one open too; matroskaenc writes an `hvcE`
++           BlockAdditionMapping (matroskaenc.c:1789-1803) with no compliance gate at
++           all. The converted stream carries no enhancement layer and must not
++           describe one; this mirrors upstream's own removal in dovi_split
 +           (dovi_split.c:117-121, "no longer valid on output"). */
 +        av_packet_side_data_remove(bsf->par_out->coded_side_data,
 +                                   &bsf->par_out->nb_coded_side_data,
@@ -138,7 +139,7 @@
      if (s->strip) {
          av_packet_side_data_remove(bsf->par_out->coded_side_data,
                                     &bsf->par_out->nb_coded_side_data,
-@@ -224,8 +302,36 @@
+@@ -224,8 +303,36 @@
                  return AVERROR(EINVAL);
              }
  
@@ -175,7 +176,7 @@
              av_log(bsf, AV_LOG_WARNING, "No Dolby Vision configuration record "
                     "found? Generating one, but results may be invalid.\n");
              ret = ff_dovi_configure_from_codedpar(&s->enc, bsf->par_out, NULL, s->compression,
-@@ -264,6 +370,10 @@
+@@ -264,6 +371,10 @@
          { "none",       "Don't compress metadata",      0, AV_OPT_TYPE_CONST, {.i64 = 0},                            .flags = FLAGS, .unit = "compression" },
          { "limited",    "Limited metadata compression", 0, AV_OPT_TYPE_CONST, {.i64 = AV_DOVI_COMPRESSION_LIMITED},  .flags = FLAGS, .unit = "compression" },
          { "extended",   "Extended metadata compression",0, AV_OPT_TYPE_CONST, {.i64 = AV_DOVI_COMPRESSION_EXTENDED}, .flags = FLAGS, .unit = "compression" },

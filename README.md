@@ -87,9 +87,10 @@ exception — it is a bitstream-filter capability, not a metadata rescue):
   rewrites the Dolby Vision configuration record on `par_out`. From those same
   output parameters it also drops the enhancement layer's own configuration
   record (`hvcE`): FFmpeg 9.0 demuxers export it as coded side data and both
-  muxers write it back under the same compliance gate as the Dolby Vision
-  record, so without the removal a converted single-layer stream would
-  describe an enhancement layer it no longer carries. Still pure bitstream
+  muxers write it back — `movenc` behind the same compliance gate as the Dolby
+  Vision record, `matroskaenc` with no gate at all — so without the removal a
+  converted single-layer stream would describe an enhancement layer it no
+  longer carries. Still pure bitstream
   work — nothing is decoded.
 
 ## Licensing

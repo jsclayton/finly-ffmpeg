@@ -15,15 +15,16 @@
  typedef struct DoviRpuContext {
      CBSBSFContext common;
      DOVIContext dec;
-@@ -40,6 +48,7 @@
+@@ -40,6 +48,8 @@
  
      int strip;
      int compression;
 +    int convert;
++    int warned_el;
  } DoviRpuContext;
  
  static int update_rpu(AVBSFContext *bsf, const AVPacket *pkt, int flags,
-@@ -66,6 +75,19 @@
+@@ -66,6 +76,19 @@
          return ret;
      }
  
@@ -43,7 +44,7 @@
      if (pkt && !(pkt->flags & AV_PKT_FLAG_KEY))
          flags |= FF_DOVI_COMPRESS_RPU;
      ret = ff_dovi_rpu_generate(&s->enc, metadata, flags, out_rpu, out_size);
-@@ -84,6 +106,30 @@
+@@ -84,6 +107,40 @@
      uint8_t *rpu = NULL;
      int rpu_size, ret;
  
@@ -55,16 +56,26 @@
 +       would declare 8.1 while still carrying an unconverted profile 7 RPU. This
 +       reassigns upstream's own `nal` rather than replacing its initialisation, so
 +       it costs no removed line. An access unit with no RPU is left alone, as
-+       upstream leaves it. The enhancement layer never reaches this filter on the
-+       conversion path: dovi_split=mode=bl_rpu runs ahead of it and removes the
-+       UNSPEC63 NALs. `strip` cannot be set here -- dovi_rpu_init() rejects the
-+       combination -- so the positional deletion below stays unreachable. */
++       upstream leaves it. `strip` cannot be set here -- dovi_rpu_init() rejects
++       the combination -- so the positional deletion below stays unreachable.
++
++       The enhancement layer should never reach this filter on the conversion
++       path: dovi_split=mode=bl_rpu runs ahead of it and removes the UNSPEC63
++       NALs. This filter no longer removes them itself, so if they are here the
++       chain was not set up and the output will declare profile 8.1 while still
++       carrying an enhancement layer. Nothing downstream can detect that, so say
++       so once rather than convert silently. */
 +    if (s->convert == DOVI_CONVERT_P81) {
 +        nal = NULL;
 +        for (int i = au->nb_units - 1; i >= 0; i--) {
-+            if (au->units[i].type == HEVC_NAL_UNSPEC62) {
++            if (au->units[i].type == HEVC_NAL_UNSPEC63) {
++                av_log_once(bsf, AV_LOG_WARNING, AV_LOG_VERBOSE, &s->warned_el,
++                            "Enhancement-layer NAL units in the input: run "
++                            "dovi_split=mode=bl_rpu ahead of convert=p81, or the "
++                            "output declares profile 8.1 while still carrying an "
++                            "enhancement layer.\n");
++            } else if (au->units[i].type == HEVC_NAL_UNSPEC62 && !nal) {
 +                nal = &au->units[i];
-+                break;
 +            }
 +        }
 +        if (!nal)
@@ -74,12 +85,10 @@
      // HEVC_NAL_UNSPEC62 is Dolby Vision RPU and HEVC_NAL_UNSPEC63 is Dolby Vision EL
      if (!nal || (nal->type != HEVC_NAL_UNSPEC62 && nal->type != HEVC_NAL_UNSPEC63))
          return 0;
-@@ -205,6 +251,21 @@
-     if (s->compression == AV_DOVI_COMPRESSION_RESERVED) {
-         av_log(bsf, AV_LOG_ERROR, "Invalid compression level: %d\n", s->compression);
+@@ -207,6 +264,21 @@
          return AVERROR(EINVAL);
-+    }
-+
+     }
+ 
 +    /* finly-ffmpeg: converting and stripping are contradictory requests, and a
 +       converted stream must not also carry compressed metadata -- ff_dovi_configure()
 +       itself warns that compression "for profile 8 is known to be unsupported by
@@ -93,10 +102,12 @@
 +            return AVERROR(EINVAL);
 +        }
 +        s->compression = AV_DOVI_COMPRESSION_NONE;
-     }
- 
++    }
++
      if (s->strip) {
-@@ -230,8 +291,43 @@
+         av_packet_side_data_remove(bsf->par_out->coded_side_data,
+                                    &bsf->par_out->nb_coded_side_data,
+@@ -230,8 +302,43 @@
                  return AVERROR(EINVAL);
              }
  
@@ -140,7 +151,7 @@
              av_log(bsf, AV_LOG_WARNING, "No Dolby Vision configuration record "
                     "found? Generating one, but results may be invalid.\n");
              ret = ff_dovi_configure_from_codedpar(&s->enc, bsf->par_out, NULL, s->compression,
-@@ -270,6 +366,10 @@
+@@ -270,6 +377,10 @@
          { "none",       "Don't compress metadata",      0, AV_OPT_TYPE_CONST, {.i64 = 0},                            .flags = FLAGS, .unit = "compression" },
          { "limited",    "Limited metadata compression", 0, AV_OPT_TYPE_CONST, {.i64 = AV_DOVI_COMPRESSION_LIMITED},  .flags = FLAGS, .unit = "compression" },
          { "extended",   "Extended metadata compression",0, AV_OPT_TYPE_CONST, {.i64 = AV_DOVI_COMPRESSION_EXTENDED}, .flags = FLAGS, .unit = "compression" },

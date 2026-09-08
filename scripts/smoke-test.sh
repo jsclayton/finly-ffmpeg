@@ -40,6 +40,14 @@ int main(void) {
     if (!avcodec_find_encoder(AV_CODEC_ID_AAC))  { printf("FAIL aac encoder missing\n");  return 1; }
     if (!avcodec_find_encoder(AV_CODEC_ID_EAC3)) { printf("FAIL eac3 encoder missing\n"); return 1; }
     if (!avcodec_find_decoder(AV_CODEC_ID_DTS))  { printf("FAIL dts decoder missing\n");  return 1; }
+    // upstream's dovi_split compiled in: it runs first in the DV chain, and
+    // mode=bl_rpu is the mode the conversion path uses
+    const AVBitStreamFilter *split = av_bsf_get_by_name("dovi_split");
+    if (!split) { printf("FAIL dovi_split bsf missing\n"); return 1; }
+    if (!split->priv_class ||
+        !av_opt_find((void *)&split->priv_class, "mode", NULL, 0, AV_OPT_SEARCH_FAKE_OBJ)) {
+        printf("FAIL dovi_split mode option missing\n"); return 1;
+    }
     // patch 0005 compiled in: the dovi_rpu bsf carries the convert option (P7 -> 8.1)
     const AVBitStreamFilter *dovi = av_bsf_get_by_name("dovi_rpu");
     if (!dovi) { printf("FAIL dovi_rpu bsf missing\n"); return 1; }

@@ -85,11 +85,16 @@ FF_COMPONENTS=(
   # --- framing: video passthrough keyframe detection + audio framing ---
   --enable-parser=h264,hevc,aac,ac3,dca,mlp,flac,opus,vorbis,mpegaudio
   # --- bitstream filters: annexb<->mp4, tagging, extradata, adts->asc ---
-  # dovi_rpu is the Dolby Vision one (patch 0005's convert=p81). It is the only
-  # entry here that pulls extra machinery: configure selects cbs_h265 + cbs_av1 +
-  # dovi_rpudec + dovi_rpuenc with it. That is the whole cost of the DV conversion
-  # path; measure it against the previous artifacts on any change.
-  --enable-bsf=h264_mp4toannexb,hevc_mp4toannexb,h264_metadata,hevc_metadata,extract_extradata,aac_adtstoasc,dca_core,eac3_core,dovi_rpu
+  # dovi_split and dovi_rpu are the Dolby Vision pair, and consumers chain them in
+  # that order: dovi_split=mode=bl_rpu drops the enhancement layer and clears
+  # el_present_flag in the configuration record, then dovi_rpu=convert=p81 (patch
+  # 0005) rewrites the RPU fields and the rest of that record. dovi_rpu is still the
+  # only entry here that pulls extra machinery: configure selects cbs_h265 +
+  # cbs_av1 + dovi_rpudec + dovi_rpuenc with it. dovi_split costs one object file --
+  # it selects hevcparse, which the hevc parser above already enables. That is the
+  # whole cost of the DV conversion path; measure it against the previous artifacts
+  # on any change.
+  --enable-bsf=h264_mp4toannexb,hevc_mp4toannexb,h264_metadata,hevc_metadata,extract_extradata,aac_adtstoasc,dca_core,eac3_core,dovi_split,dovi_rpu
   # --- audio decoders: transcode sources + probe correctness (NO video decoders) ---
   --enable-decoder=dca,truehd,mlp,aac,aac_latm,ac3,eac3,flac,opus,vorbis,mp3,pcm_s16le,pcm_s24le,pcm_bluray
   # --- text-subtitle decoders (WebVTT rendition path) ---

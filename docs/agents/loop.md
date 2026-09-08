@@ -51,10 +51,11 @@ perl -e 'alarm 1200; exec @ARGV' ./build.sh --smoke
   repo and cannot run here. Per ADR 0001 a change **lands** on the gate
   alone. Per ADR 0003 the human checkpoint is the **release notes**: when
   John asks to release (or landed tickets accumulate), the conductor
-  drafts them with `bash scripts/release-notes.sh` — every landed ticket
-  since the last tag with its gate evidence and deviations, consumer-facing
-  changes (library majors, removed symbols, new options), open `needs-hands`
-  issues with their reasons — and John decides to cut. The notes **open
+  drafts them with `bash scripts/release-notes.sh` — a short document: the
+  breaking changes, then the list of tickets landed since the last tag, and
+  nothing else (the gate evidence and deviations stay on each ticket's Done
+  and landing comments; the commit log is `git log`) — and John decides to
+  cut. The notes **open
   with breaking changes**, and that section prints even when it is empty:
   `v{ffmpeg}-{N}` cannot signal a break the way a semver major would, so
   the notes are the only place a consumer learns the contract moved. A

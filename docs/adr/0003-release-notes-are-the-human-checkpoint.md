@@ -23,3 +23,7 @@ ADR 0001 put engine **confirmation** before the **release** and made that step J
 ## Addendum 2026-09-08 — the notes open with the breaking changes
 
 Versioning here is `v{ffmpeg}-{N}`, so `N` carries no signal a consumer can read: it cannot say "this one changes what you must do" the way a semver major can, and the pin is `.exact` besides, so nothing resolves a break for anyone. That makes these notes the only place a consumer learns the contract moved, which is too much to leave to prose — a ticket that changes the contract now carries the label `breaking` and a `## Consumer-facing change` section in its body, and the draft opens with those sections quoted verbatim, printing "None" when there are none so a reader can tell none from forgotten. The decision is unchanged; this only names the one part of the document that a consumer, rather than John, is the audience for.
+
+## Addendum 2026-09-08 — the notes are short
+
+The first draft the script produced quoted every ticket's gate evidence and deviations, listed every commit by hash, and carried a trailer. John's read: far too much. The notes now hold the breaking changes and the list of tickets landed since the last tag, and nothing else. The gate evidence, deviations and landing shas stay where they were written, on each ticket's Done and landing comments, one click from the notes; the commit log is `git log`. The checkpoint is the decision to cut, and a document sized for that decision is the one that gets read.

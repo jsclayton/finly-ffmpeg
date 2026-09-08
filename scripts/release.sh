@@ -28,10 +28,8 @@
 #                            pushing or creating the release.
 #
 # The step before this one is `bash scripts/release-notes.sh` — the notes John
-# reads to decide the cut (ADR 0003). It is read-only and calls --dry-run to
-# quote in its trailer, so the ordering above is load-bearing for it as well:
-# every check, then exit, before anything is zipped, rewritten, committed,
-# tagged or pushed. Keep the exit where it is.
+# reads to decide the cut (ADR 0003). It is read-only and does not call this
+# script; run `--dry-run` yourself as the check that a cut would work.
 #
 # Requires: a clean tree, artifacts/ from a ./build.sh run, gh authenticated.
 #

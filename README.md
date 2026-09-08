@@ -139,7 +139,7 @@ and a deleted release burns its tag name forever — fix a bad release by
 incrementing `N`, never by re-cutting.
 
 The step before cutting is `bash scripts/release-notes.sh`, which drafts the
-notes for the next tag from the tracker and the history — what landed with its
-gate evidence, the commits, the open questions — opening with the **breaking
-changes**, since `v{ffmpeg}-{N}` cannot signal a break the way a semver major
-would and the notes are the only place a consumer learns the contract moved.
+notes for the next tag from the tracker: the **breaking changes** first, since
+`v{ffmpeg}-{N}` cannot signal a break the way a semver major would and the notes
+are the only place a consumer learns the contract moved, then the list of what
+landed. Short on purpose; the evidence stays on each ticket.

@@ -57,7 +57,9 @@ perl -e 'alarm 1200; exec @ARGV' ./build.sh --smoke
   reasons — and John decides to cut. **Confirmation** follows the release:
   the engine repo's pin-bump ticket runs its suite against the tag; red
   burns one `N` and reopens the work here. Nothing here files a "confirm
-  this" issue.
+  this" issue. `bash scripts/release.sh --dry-run` runs every release
+  precondition and prints the tag and the LGPL bundle a cut would use,
+  writing nothing — the draft quotes both.
 
 ## Review duties
 

@@ -10,9 +10,23 @@
 #   bash scripts/release-notes.sh                    # <newest v* tag>..main
 #   bash scripts/release-notes.sh --range v8.1.2-3..v9.0.1-1
 #
-# READ-ONLY, always: it never commits, tags, pushes, comments or posts, and it
-# reads no build artifacts. Cutting stays `scripts/release.sh`, and John's act.
+# READ-ONLY, always: it writes nothing to the repository and nothing to the
+# tracker — no commit, tag, push, comment, label or release. Cutting stays
+# `scripts/release.sh`, and John's act. Two things it does touch, both through
+# the `--dry-run` it shells out to for the trailer: that runs `git fetch --tags`,
+# which updates local tag refs and goes to the network, and it stats
+# `artifacts/` to check a cut would have bytes to ship. What makes that safe is
+# release.sh's ordering — every check, then `exit 0`, before anything is zipped,
+# rewritten, committed, tagged or pushed. That ordering is now load-bearing for
+# this script too, and release.sh's header says so.
 # Output is plain Markdown — no colour, no progress — so a skill can pipe it.
+#
+# The repo is public (`docs/agents/loop.md`, Visibility): this document is
+# world-readable, and most of it is quoted straight out of GitHub issues that
+# already are. The fixed strings here keep the repo's generic rule — the
+# consumer is "the consumer", its repository is never named — and anything that
+# would leak belongs in the consumer's own tracker, so it never reaches an issue
+# this script can quote.
 #
 # Sections, in this order (ADR 0003 + the breaking-changes convention in
 # docs/agents/loop.md): header, Breaking changes, landed issues with their gate
@@ -36,18 +50,22 @@
 #   * QUOTED, NOT PARAPHRASED. The gate evidence is the `Tests:` paragraph of
 #     the newest `## Done` comment, and the `Deviations:` paragraph beside it,
 #     copied through unaltered — a paragraph, not a line, because implementers
-#     hard-wrap. Verbatim is the point: a summary of a gate result is not
-#     evidence. A paragraph that ends mid-thought (the Done comment continued
+#     hard-wrap. Verbatim is the point: a gate result retold in someone else's
+#     words is not evidence. A paragraph that ends mid-thought (the Done comment continued
 #     into a code block) is left as it stands; the issue number is right there.
 #
 #   * COMMIT GROUPS. A commit's group is the first word of its subject prefix,
 #     so `patch 0005:` groups under `patch` and `release v9.0.1-1:` under
-#     `release`. The prefixes ADR 0003 names come first, in its order; any
+#     `release`. `KNOWN` below is the list issue #5 enumerated (bump, smoke,
+#     docs, loop, research, chore); those come first, in that order, and it is
+#     an ordering preference only — nothing depends on the list being complete,
+#     and it is deliberately not maintained as prefixes come and go. Every
 #     other prefix keeps its own group after them, alphabetically, rather than
-#     being swept into "other" — `review:` and `package-lgpl:` are real work
-#     and a fixed list would hide them the day someone coins a prefix. Only a
-#     subject with no prefix at all lands under "other". Nothing is dropped:
-#     the group counts sum to the range count, which the header prints.
+#     being swept into "other": `review:`, `build:` and `package-lgpl:` are
+#     real work, and a fixed list would hide them the day someone coins a
+#     prefix. Only a subject with no prefix at all lands under "other".
+#     Nothing is dropped: the group counts sum to the range count, which the
+#     header prints.
 #
 #   * NOT git-cliff. It was installed (Homebrew, 2.14.1) and tried against
 #     this history: with a tuned `cliff.toml` it produces exactly the section
@@ -57,6 +75,14 @@
 #     are `gh` and `jq` work it cannot do at all. The commit half is the six
 #     lines of `git log` and `sed` below. GitHub's own generator was ruled out
 #     upstream of this: it builds notes from PRs, and this repo has none.
+#
+#   * BREAKING CHANGES ARE ONLY AS GOOD AS THE LABELLING. That section is built
+#     from issues labelled `breaking`, so it reports the tracker and not the
+#     diff, and it says so when it is empty. The gap is real: the 9.0.1 bump
+#     moved four library majors and removed API, but #2 predates the convention
+#     and carries neither the label nor a `## Consumer-facing change` section,
+#     so a draft for that range prints an empty section. Label the ticket, or
+#     the notes cannot know.
 #
 #   * THE DRY RUN. The trailer quotes `scripts/release.sh --dry-run`, which is
 #     what checks that a cut would work at all. It needs repository credentials
@@ -111,17 +137,26 @@ COUNT="$(git rev-list --count "${FROM_SHA}..${TO_SHA}")"
 
 # The tag a cut would take next: v{FFMPEG_VERSION}-{N}, N one past the highest
 # existing tag for this version — release.sh's own arithmetic, minus its
-# `git fetch --tags` (this script stays credential-free; the dry run below is
-# what confirms the number against the remote).
+# `git fetch --tags` (the number here must come out without credentials; the
+# dry run in the trailer is what confirms it against the remote, and the two
+# are printed together so a disagreement is visible). Copied from release.sh
+# rather than sourced: `config.sh` sets up build paths and directories this
+# script has no use for, and release.sh reads the pin the same way, by sed.
 VER="$(sed -n 's/^FFMPEG_VERSION="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' scripts/config.sh | head -1)"
 [[ -n "$VER" ]] || die "could not read FFMPEG_VERSION from scripts/config.sh"
 last="$(git tag -l "v${VER}-*" | sed -n "s/^v${VER}-\([0-9]*\)$/\1/p" | sort -n | tail -1)"
 NEXT_TAG="v${VER}-$(( ${last:-0} + 1 ))"
 
 # Every issue, with its comments, in one call.
-ISSUES="$(mktemp)"; trap 'rm -f "$ISSUES"' EXIT
-gh issue list --state all --limit 200 \
+ISSUES="$(mktemp)"; COMMITS="$(mktemp)"
+trap 'rm -f "$ISSUES" "$COMMITS"' EXIT
+GH_LIMIT=500
+gh issue list --state all --limit "$GH_LIMIT" \
   --json number,title,state,labels,closedAt,body,comments > "$ISSUES"
+# A silently truncated page would drop landed tickets out of the notes, which is
+# the one failure this document cannot have.
+[[ "$(jq 'length' "$ISSUES")" -lt "$GH_LIMIT" ]] \
+  || die "more than ${GH_LIMIT} issues — raise GH_LIMIT, the tracker page is truncated"
 
 # jq helpers: a "paragraph" is the run of non-blank lines starting at the first
 # line with the given prefix. Used for the Done evidence and for the
@@ -156,7 +191,7 @@ def landing_sha:
 # the range end and not of its start.
 in_range() {
   local s
-  s="$(git rev-parse --verify -q "${1}^{commit}")" || return 1
+  s="$(git rev-parse --verify -q "${1}^{commit}")" || return 2   # not a commit here
   git merge-base --is-ancestor "$s" "$TO_SHA" || return 1
   ! git merge-base --is-ancestor "$s" "$FROM_SHA"
 }
@@ -171,11 +206,16 @@ FROM_DATE="$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%
 # one and shift the closed date into $sha.
 while IFS=$'\x1f' read -r num sha closed; do
   [[ -n "$num" ]] || continue
-  if [[ -n "$sha" ]] && in_range "$sha"; then
+  rc=0
+  [[ -n "$sha" ]] && { in_range "$sha" || rc=$?; } || rc=3
+  if [[ "$rc" -eq 0 ]]; then
     LANDED="${LANDED}${num} ${sha}
 "
   elif [[ -n "$closed" && "$closed" > "$FROM_DATE" ]]; then
-    if [[ -n "$sha" ]]; then
+    if [[ "$rc" -eq 2 ]]; then
+      NOT_LANDED="${NOT_LANDED}${num} landing comment cites ${sha}, which is not a commit in this repository
+"
+    elif [[ "$rc" -eq 1 ]]; then
       NOT_LANDED="${NOT_LANDED}${num} landed ${sha}, outside this range
 "
     else
@@ -233,8 +273,7 @@ EOF
 if [[ -z "$breaking" ]]; then
   add "None recorded: no issue landed in this range carries the \`breaking\` label."
   add ""
-  add "_This section is only as good as the labelling — it reports what the tracker"
-  add "says, not what a reader of the diff would conclude._"
+  add "_Read from the tracker, not the diff: an unlabelled ticket cannot appear here._"
   add ""
 fi
 
@@ -281,7 +320,6 @@ fi
 # --- commits ----------------------------------------------------------------
 add "## Commits (${COUNT})"
 add ""
-COMMITS="$(mktemp)"; trap 'rm -f "$ISSUES" "$COMMITS"' EXIT
 git log --reverse --format='%h	%s' "${FROM_SHA}..${TO_SHA}" \
   | sed -E 's/^([^	]*)	([a-z0-9][a-z0-9._-]*)( [a-z0-9._-]+)?:[[:space:]]/\2	\1	\2\3: /' \
   | awk -F'\t' 'NF==3 {print; next} {print "other\t" $1 "\t" $2}' > "$COMMITS"
@@ -320,8 +358,10 @@ hands="$(jq -r '
   .[] | select(.state == "OPEN")
       | select([.labels[].name] | index("needs-hands"))
       | [(.number|tostring), .title,
-         ((.body | split("\n") | map(select(startswith("Reason:") or startswith("Why hands:"))) | first)
-          // "reason: unstated")] | join("\u001f")' "$ISSUES")"
+         ("reason: " + (((.body | split("\n")
+                          | map(select(startswith("Reason:") or startswith("Why hands:")))
+                          | first) // "Reason: unstated")
+                         | sub("^(Reason:|Why hands:)[[:space:]]*"; "")))] | join("\u001f")' "$ISSUES")"
 if [[ -z "$hands" ]]; then
   add "None."
 else

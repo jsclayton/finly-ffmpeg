@@ -24,7 +24,9 @@ mkdir -p "${WORK}"
 cat > "${WORK}/probe.c" <<'EOF'
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
+#include <libavcodec/bsf.h>
 #include <libavutil/mem.h>
+#include <libavutil/opt.h>
 #include <libavutil/version.h>
 #include <stdio.h>
 int main(void) {
@@ -38,6 +40,13 @@ int main(void) {
     if (!avcodec_find_encoder(AV_CODEC_ID_AAC))  { printf("FAIL aac encoder missing\n");  return 1; }
     if (!avcodec_find_encoder(AV_CODEC_ID_EAC3)) { printf("FAIL eac3 encoder missing\n"); return 1; }
     if (!avcodec_find_decoder(AV_CODEC_ID_DTS))  { printf("FAIL dts decoder missing\n");  return 1; }
+    // patch 0005 compiled in: the dovi_rpu bsf carries the convert option (P7 -> 8.1)
+    const AVBitStreamFilter *dovi = av_bsf_get_by_name("dovi_rpu");
+    if (!dovi) { printf("FAIL dovi_rpu bsf missing\n"); return 1; }
+    if (!dovi->priv_class ||
+        !av_opt_find((void *)&dovi->priv_class, "convert", NULL, 0, AV_OPT_SEARCH_FAKE_OBJ)) {
+        printf("FAIL dovi_rpu convert option missing\n"); return 1;
+    }
     printf("SMOKE_OK\n");
     return 0;
 }
@@ -62,7 +71,7 @@ if ! xcrun simctl list devices | grep -q "(Booted)"; then
 fi
 
 log "running probe in simulator"
-out="$(xcrun simctl spawn booted "${WORK}/probe" 2>/dev/null)"
+out="$(xcrun simctl spawn booted "${WORK}/probe" 2>/dev/null)" || true
 echo "${out}"
 echo "${out}" | grep -q "SMOKE_OK" || die "smoke test did not print SMOKE_OK"
 log "SMOKE TEST PASSED"

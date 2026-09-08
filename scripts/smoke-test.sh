@@ -71,6 +71,8 @@ if ! xcrun simctl list devices | grep -q "(Booted)"; then
 fi
 
 log "running probe in simulator"
+# `|| true` so set -e does not abort here on a failing probe: we want the
+# probe's own FAIL line echoed and die's message printed, not a silent exit 1.
 out="$(xcrun simctl spawn booted "${WORK}/probe" 2>/dev/null)" || true
 echo "${out}"
 echo "${out}" | grep -q "SMOKE_OK" || die "smoke test did not print SMOKE_OK"

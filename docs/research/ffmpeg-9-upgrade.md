@@ -62,6 +62,13 @@ proudly presents FFmpeg 9.0 'Lei', about 4 months after the release of
 FFmpeg 8.1." (`ffmpeg-9.0.1/RELEASE_NOTES`). `ffmpeg-9.0.1/VERSION` and
 `ffmpeg-9.0.1/RELEASE` both contain `9.0.1`.
 
+**Correction (2026-09-08, from the 9.0.1 bump):** the download page's 9.0.1
+library numbers above are the 9.0 ones. The tarball itself says micro **101**,
+not 100 — `ffmpeg-9.0.1/libavformat/version.h` has `LIBAVFORMAT_VERSION_MICRO
+101`, and the built library reports `avformat 63.1.101` from the simulator
+probe; likewise lavu 61.1.101, lavc 63.1.101, lswr 7.1.101. The majors are as
+stated. Where the two disagree, the tarball is the primary source.
+
 UNVERIFIED: the news page <https://ffmpeg.org/index.html> has no 9.0 or 9.0.1
 news post at all (its newest headings are "June 24th, 2026, Ampere Server
 Donation" then "September 11th, 2024, Coverity"), so no release announcement

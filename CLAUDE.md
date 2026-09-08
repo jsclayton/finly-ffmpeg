@@ -34,7 +34,9 @@ the local override path binds against `artifacts/`.
 ## Bumping FFmpeg
 
 Two lines in `scripts/config.sh` — `FFMPEG_VERSION` + `FFMPEG_SHA256` — then
-re-run `./build.sh`. **Re-verify patches 0001–0005 apply on every bump** (their
+re-run `./build.sh` and commit the headers it regenerates under
+`Sources/CFFmpeg/include/` in the same commit as the pin.
+**Re-verify patches 0001–0005 apply on every bump** (their
 struct paths and hook sites are version-specific). The `bump-ffmpeg` skill walks
 the full procedure.
 

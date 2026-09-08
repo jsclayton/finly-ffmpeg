@@ -26,11 +26,14 @@ perl -e 'alarm 1200; exec @ARGV' ./build.sh --smoke
 
 - **Wall clock:** bounded at 20 minutes by the `alarm` wrapper. Measured
   2026-09-08 on a fresh worktree (no `vendor/`, `build/` or `artifacts/`,
-  so tarball download + all six slices from scratch): **3 min 14 s, green**
-  (exit 0, `SMOKE_OK`, `avformat 62.12.102`). The bound is six times that;
-  a run that hits it is a hung simulator or a stuck download, not a slow
-  build. A worktree never shares build state with the main checkout, so
-  every implementer run and every landing pays the full build.
+  so tarball download + all six slices from scratch): **2 min 48 s, green**
+  on FFmpeg 9.0.1 (exit 0, `SMOKE_OK`, `avformat 63.1.101`); 3 min 14 s on
+  8.1.2 before the bump. Re-measure on every bump — the version and the
+  library number here are what a reader checks a gate run against. The
+  bound is six times the measurement; a run that hits it is a hung
+  simulator or a stuck download, not a slow build. A worktree never shares
+  build state with the main checkout, so every implementer run and every
+  landing pays the full build.
 - **Retry policy:** red is red for anything the build or the patches
   report. The one environment flake is the simulator: `no simulator
   available to boot`, a `simctl boot` failure, or `simctl spawn` printing

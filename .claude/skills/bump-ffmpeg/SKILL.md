@@ -1,6 +1,6 @@
 ---
 name: bump-ffmpeg
-description: Bump the pinned FFmpeg version safely — the pin, the gate, the regenerated headers, and the needs-hands release issue. Use for FFmpeg security releases or version upgrades.
+description: Bump the pinned FFmpeg version safely — the pin, the gate, the regenerated headers, and the needs-hands release issue. Use for an FFmpeg security release or any move to a newer upstream release.
 ---
 
 # Bump FFmpeg
@@ -78,12 +78,16 @@ a checkout between the two would not compile. Do not hand-edit them.
 `vendor/`, `build/` and `artifacts/` are gitignored and per-checkout; nothing
 about them is bookkeeping for the commit.
 
-## 5. Update the three doc mentions
+## 5. Update the four doc mentions
 
 - `scripts/config.sh` — the "confirmed against" version in the patch comment (step 1).
 - `CLAUDE.md` — the patch range in "Re-verify patches …", if the count moved.
 - `README.md` — the stated version and the example `.exact` pin, which becomes
   `"<new>-1"`: `N` resets to 1 on a bump.
+- `docs/agents/loop.md` — the gate's measured wall clock and the `avformat`
+  number the probe prints. Both move on every bump, and the file's own rule is
+  "keep each entry true": a stale measurement is what makes a slow or wrong
+  gate run look normal.
 
 ## 6. File the needs-hands issue
 

@@ -43,14 +43,12 @@ perl -e 'alarm 1200; exec @ARGV' ./build.sh --smoke
   — exit 0 is green (measured 2026-09-08: under a second). Run it before
   the gate; it names the broken shim where the gate would only say the
   probe failed to link.
-- **Not a landing check:** the consumer engine's suite (the "oracle pass"
-  in `.claude/skills/bump-ffmpeg/SKILL.md` — `/run-tests`, `/validate-hls`,
-  the DV RPU diff against dovi_tool) lives in the engine repo and runs
-  against a *tagged release* of this one, after landing. TODO: John decides
-  whether an FFmpeg bump may land on `main` on build + smoke alone, or
-  must first be verified by the engine suite through a local package
-  override (and if so, how the conductor asks for that — a `needs-hands`
-  issue is the current assumption).
+- **Not a landing check:** the consumer engine's suite lives in the engine
+  repo and cannot run here. Per ADR 0001, a change **lands** on the gate
+  alone; engine **confirmation** (through a local package override) gates
+  the **release**, which is John's. A bump or patch change files one
+  `needs-hands` issue at its end: confirm, then release. That issue never
+  blocks landing.
 
 ## Review duties
 
@@ -90,4 +88,4 @@ it must use:
 - **Default model:** opus. Sonnet only when the brief marks every bullet mechanical.
 - **Patches are never mechanical:** any ticket whose touchpoints include `scripts/patches/` — or whose gate could fail there (an `FFMPEG_VERSION` bump) — is briefed as **opus**, never sonnet, and the brief says so. A hunk that stops applying means upstream moved the hook site; deciding whether the patch is still needed, and where it now belongs, is judgment work, not a rebase.
 - **Concurrency:** 1 — and hold it there: every implementer's gate is a full six-slice FFmpeg cross-compile in its own worktree, so two at once double the CPU time of both. Cap 2 only when John says so.
-- **Needs-hands:** TODO: John decides. The current assumption is **yes** — a landed FFmpeg bump or patch change is machine-verified here (build + smoke) but is only *confirmed* when the consumer engine's suite passes against it, which needs John's hands (local override or a tagged release). Everything else in this repo (scripts, docs, CI workflow) is machine-verifiable.
+- **Needs-hands:** yes, and it means the release step (ADR 0001). A bump or patch change is machine-verified here by the gate and lands on it; the implementer files one `needs-hands` issue asking John to confirm through a local package override and then release. Everything else in this repo (scripts, docs, CI workflow) is machine-verifiable and files nothing.

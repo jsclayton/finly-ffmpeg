@@ -26,10 +26,10 @@ set -euo pipefail
 # dovi_rpu bitstream filter to convert dual-layer Dolby Vision profile 7 to
 # single-layer 8.1 (pure RPU/NAL work — still no decoder). RE-VERIFY all five
 # on every FFMPEG_VERSION bump: parser struct paths and demuxer hook sites
-# are version-specific (confirmed against 8.1.2). The URLSession AVIOContext
+# are version-specific (confirmed against 9.0.1). The URLSession AVIOContext
 # bridge is NOT a patch — it is app-side code on the public API.
-FFMPEG_VERSION="8.1.2"
-FFMPEG_SHA256="464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c"
+FFMPEG_VERSION="9.0.1"
+FFMPEG_SHA256="cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635"
 FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
 
 # ----------------------------------------------------------------------------

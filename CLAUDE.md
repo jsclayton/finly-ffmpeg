@@ -60,8 +60,13 @@ preserve both properties, or B-frame composition timing breaks downstream.
 
 - **No GPL, no non-free** components (no `--enable-gpl`, no `libfdk_aac`).
 - **No video encoders or decoders, ever.** Video is stream-copied by consumers.
-- **Keep the repo generic:** no product names, no private paths or hostnames, no
-  media-library statistics — in code, comments, or commit messages.
+- **Keep the repo generic — it is public (LGPL).** No product names, no private
+  paths or hostnames, no media-library statistics, no consumer internals (type
+  names, test names, fixture names, file layout) — in code, comments, commit
+  messages, **and in GitHub issues, issue comments and session names**, which
+  are just as public. The consumer is "the engine" or "the consumer"; its
+  repository is never named. What must stay private stays in the engine's own
+  tracker.
 - **Linear history — NEVER create a merge commit.** Squash + merge (the default),
   or rebase + fast-forward when the branch's individual commits are valuable
   history. Even history imports from another repo (filter-repo grafts) are

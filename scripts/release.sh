@@ -16,7 +16,7 @@
 # What it does, in order:
 #   1. next N from existing v{VER}-* tags
 #   2. zip the four xcframeworks (ditto --keepParent: .xcframework at zip root,
-#      the layout SwiftPM requires) + collect the LGPL bundle
+#      the layout SwiftPM requires) + the LGPL bundle, renamed to the tag
 #   3. swift package compute-checksum per zip
 #   4. rewrite Package.swift's binaryTargets to url:checksum: for this tag
 #   5. commit, tag, push main + tag
@@ -31,14 +31,17 @@
 # reads to decide the cut (ADR 0003). It is read-only and does not call this
 # script; run `--dry-run` yourself as the check that a cut would work.
 #
-# Requires: a clean tree, artifacts/ from a ./build.sh run, gh authenticated.
+# Requires: a clean tree on main, equal to origin/main; artifacts/ from a
+# ./build.sh run; gh authenticated. The dry-run makes the same checks.
 #
 # The LGPL bundle is chosen BY VERSION — artifacts/lgpl/finly-ffmpeg-lgpl-
 # {FFMPEG_VERSION}.tar.gz, the exact name package-lgpl.sh writes — never by sort
 # order, which would take the older bundle an incremental checkout still has
 # lying about and put the wrong corresponding source in the release, silently.
 # package-lgpl.sh keeps that directory down to one bundle (see its header); this
-# check confirms the one there is the right one.
+# check confirms the one there is the right one. The asset uploaded carries the
+# TAG (finly-ffmpeg-lgpl-{VER}-{N}.tar.gz): the bundle is the corresponding
+# source for that tag, and its patches and scripts change between N's.
 #
 # NEVER REUSE A TAG. The repo has GitHub release immutability enabled (tags and
 # assets lock at publish) — a deleted release burns its tag name forever, and
@@ -72,14 +75,25 @@ done
 LGPL_TAR="artifacts/lgpl/finly-ffmpeg-lgpl-${VER}.tar.gz"
 [[ -f "$LGPL_TAR" ]] || { echo "missing ${LGPL_TAR} — run ./build.sh" >&2; exit 1; }
 
-# Next N for this FFmpeg version (tags fetched so a stale local clone can't reuse one).
-git fetch --tags --quiet
+# On main, and main equal to origin/main. This script commits on the current
+# branch and then pushes `main`: run from a worktree on another branch, the
+# release commit lands there and the tag points at a commit main never gets.
+# Tags fetched too, so a stale local clone can't reuse an N.
+git fetch --quiet --tags origin main
+branch="$(git symbolic-ref --short -q HEAD || echo detached)"
+[[ "$branch" == "main" ]] \
+  || { echo "not on main (on ${branch}) — release from the main checkout" >&2; exit 1; }
+[[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] \
+  || { echo "main ($(git rev-parse --short HEAD)) does not match origin/main ($(git rev-parse --short origin/main)) — push or pull first" >&2; exit 1; }
+
+# Next N for this FFmpeg version.
 last=$(git tag -l "v${VER}-*" | sed -n "s/^v${VER}-\([0-9]*\)$/\1/p" | sort -n | tail -1)
 N=$(( ${last:-0} + 1 ))
 TAG="v${VER}-${N}"
+LGPL_ASSET="finly-ffmpeg-lgpl-${TAG#v}.tar.gz"
 
 if [[ "$do_dry_run" -eq 1 ]]; then
-  echo "dry-run: would release ${TAG} with ${LGPL_TAR}"
+  echo "dry-run: would release ${TAG} with ${LGPL_TAR} as ${LGPL_ASSET}"
   exit 0
 fi
 
@@ -98,7 +112,10 @@ for lib in "${FF_LIBS[@]}"; do
   CHECKSUMS+=("$sum")
   echo "    ${lib}.xcframework.zip  ${sum}"
 done
-cp "$LGPL_TAR" "$DIST/"
+# The bundle is the corresponding source for THIS tag — the patches and scripts
+# inside it change between N's — so the asset carries the tag, not just the
+# FFmpeg version the build-time name has.
+cp "$LGPL_TAR" "$DIST/${LGPL_ASSET}"
 ( cd "$DIST" && shasum -a 256 * > checksums.txt )
 
 # Rewrite the four binaryTargets to url:checksum for this tag. Matches both the

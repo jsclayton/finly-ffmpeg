@@ -1,0 +1,50 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./build.sh:*)",
+      "Bash(bash build.sh:*)",
+      "Bash(bash scripts/fetch-ffmpeg.sh:*)",
+      "Bash(bash scripts/build-ffmpeg.sh:*)",
+      "Bash(bash scripts/make-xcframeworks.sh:*)",
+      "Bash(bash scripts/package-lgpl.sh:*)",
+      "Bash(bash scripts/smoke-test.sh:*)",
+      "Bash(perl -e 'alarm:*)",
+      "Bash(swift build:*)",
+      "Bash(swift package:*)",
+      "Bash(xcrun:*)",
+      "Bash(shasum:*)",
+      "Bash(patch:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git rebase:*)",
+      "Bash(git fetch:*)",
+      "Bash(git worktree:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git patch-id:*)",
+      "Bash(gh issue:*)",
+      "Bash(gh label:*)",
+      "Bash(gh api:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(sed -n:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(jq:*)",
+      "Bash(diff:*)"
+    ],
+    "deny": [
+      "Bash(git clean:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}

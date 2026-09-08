@@ -24,3 +24,6 @@ Package.resolved
 
 # macOS
 .DS_Store
+
+# Agent worktrees (tool-managed, never committed)
+/.claude/worktrees/

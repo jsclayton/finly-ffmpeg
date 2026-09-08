@@ -77,3 +77,26 @@ Action is a reproducibility CHECK, never the publisher: released bytes must
 match the committed checksums, and only the local build is the one the engine
 suite verified. Release immutability is ON — a deleted release burns its tag
 name; increment `N`, never re-cut a tag.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repo's GitHub Issues (`jsclayton/finly-ffmpeg`, via the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage labels, unrenamed (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root (neither exists yet). See `docs/agents/domain.md`.
+
+## Implementation loop
+
+This repo runs the conductor plugin's loop: `conductor:next` (entry point —
+John asks "what's next"), `conductor:brief`, `conductor:implement-ticket`,
+`conductor:start`. Project facts — test gate, review personas, docs a brief
+reads — are in `docs/agents/loop.md`; the rules are in the plugin. Work
+lands on `main` by rebase + fast-forward; implementers run in
+`.claude/worktrees/` and never push.

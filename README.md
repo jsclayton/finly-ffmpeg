@@ -104,7 +104,7 @@ deliberately: a binary-artifact dependency is bumped on purpose, never by range
 resolution):
 
 ```swift
-.package(url: "https://github.com/jsclayton/finly-ffmpeg.git", exact: "8.1.2-2")
+.package(url: "https://github.com/jsclayton/finly-ffmpeg.git", exact: "9.0.1-1")
 // product: .product(name: "CFFmpeg", package: "finly-ffmpeg")
 ```
 

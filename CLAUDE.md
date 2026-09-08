@@ -34,7 +34,7 @@ the local override path binds against `artifacts/`.
 ## Bumping FFmpeg
 
 Two lines in `scripts/config.sh` — `FFMPEG_VERSION` + `FFMPEG_SHA256` — then
-re-run `./build.sh`. **Re-verify patches 0001–0004 apply on every bump** (their
+re-run `./build.sh`. **Re-verify patches 0001–0005 apply on every bump** (their
 struct paths and hook sites are version-specific). The `bump-ffmpeg` skill walks
 the full procedure.
 
@@ -47,6 +47,8 @@ the full procedure.
 - **0003** — same for the MP4/`mov` path.
 - **0004** — lifts HEVC mastering-display + content-light SEI into
   `coded_side_data` so `movenc` writes `mdcv`/`clli` on a stream-copy.
+- **0005** — adds `convert=p81` to the `dovi_rpu` bitstream filter: dual-layer
+  Dolby Vision profile 7 in, single-layer 8.1 out. Pure RPU/NAL work, no decode.
 
 0002/0003 enable HEVC parsing via `AVSTREAM_PARSE_HEADERS`, which does **not**
 repack packets and does **not** set `has_b_frames` — any change there MUST

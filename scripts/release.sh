@@ -22,7 +22,20 @@
 #   5. commit, tag, push main + tag
 #   6. gh release create with the zips, the LGPL bundle, and checksums.txt
 #
+#   ./release.sh --dry-run   every check, then the tag and the LGPL bundle a
+#                            release would use — and exit 0 before zipping,
+#                            rewriting Package.swift, committing, tagging,
+#                            pushing or creating the release.
+#
 # Requires: a clean tree, artifacts/ from a ./build.sh run, gh authenticated.
+#
+# The LGPL bundle is chosen BY VERSION — artifacts/lgpl/finly-ffmpeg-lgpl-
+# {FFMPEG_VERSION}.tar.gz, the exact name package-lgpl.sh writes — never by sort
+# order. An incremental checkout's artifacts/lgpl/ can hold the previous
+# version's bundle as well, and the older version sorts first, so picking the
+# first tarball would ship the wrong corresponding source: a silent LGPL
+# compliance defect. package-lgpl.sh drops bundles of other versions, so the
+# directory holds one bundle and this check confirms it is the right one.
 #
 # NEVER REUSE A TAG. The repo has GitHub release immutability enabled (tags and
 # assets lock at publish) — a deleted release burns its tag name forever, and
@@ -35,6 +48,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+dry_run=0
+for a in "$@"; do
+  case "$a" in
+    --dry-run) dry_run=1 ;;
+    *) echo "unknown flag: $a" >&2; exit 1 ;;
+  esac
+done
+
 FF_LIBS=(libavutil libavcodec libavformat libswresample)
 
 VER="$(sed -n 's/^FFMPEG_VERSION="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' scripts/config.sh | head -1)"
@@ -45,14 +66,20 @@ for lib in "${FF_LIBS[@]}"; do
   [[ -d "artifacts/xcframework/${lib}.xcframework" ]] \
     || { echo "missing artifacts/xcframework/${lib}.xcframework — run ./build.sh" >&2; exit 1; }
 done
-LGPL_TAR="$(ls artifacts/lgpl/*.tar.gz 2>/dev/null | head -1)"
-[[ -n "$LGPL_TAR" ]] || { echo "missing LGPL bundle tar.gz — run ./build.sh" >&2; exit 1; }
+LGPL_TAR="artifacts/lgpl/finly-ffmpeg-lgpl-${VER}.tar.gz"
+[[ -f "$LGPL_TAR" ]] || { echo "missing ${LGPL_TAR} — run ./build.sh" >&2; exit 1; }
 
 # Next N for this FFmpeg version (tags fetched so a stale local clone can't reuse one).
 git fetch --tags --quiet
 last=$(git tag -l "v${VER}-*" | sed -n "s/^v${VER}-\([0-9]*\)$/\1/p" | sort -n | tail -1)
 N=$(( ${last:-0} + 1 ))
 TAG="v${VER}-${N}"
+
+if [[ "$dry_run" -eq 1 ]]; then
+  echo "dry-run: would release ${TAG} with ${LGPL_TAR}"
+  exit 0
+fi
+
 echo "==> releasing ${TAG}"
 
 DIST="build/dist-${TAG}"

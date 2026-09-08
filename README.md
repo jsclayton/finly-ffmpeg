@@ -82,9 +82,15 @@ exception — it is a bitstream-filter capability, not a metadata rescue):
   filter: dual-layer Dolby Vision profile 7 in, single-layer profile 8.1 out.
   Drops the interleaved `UNSPEC63` enhancement-layer NALs (upstream inspects
   only the *last* NAL of an access unit, so its own `strip` misses every one of
-  them), clears `disable_residual_flag`/`el_spatial_resampling_filter_flag` and
-  the NLQ block in the RPU, and rewrites the configuration record on
-  `par_out`. Still pure bitstream work — nothing is decoded.
+  them), sets `disable_residual_flag`, clears
+  `el_spatial_resampling_filter_flag` and the NLQ block in the RPU, and
+  rewrites the Dolby Vision configuration record on `par_out`. From those same
+  output parameters it also drops the enhancement layer's own configuration
+  record (`hvcE`): FFmpeg 9.0 demuxers export it as coded side data and both
+  muxers write it back under the same compliance gate as the Dolby Vision
+  record, so without the removal a converted single-layer stream would
+  describe an enhancement layer it no longer carries. Still pure bitstream
+  work — nothing is decoded.
 
 ## Licensing
 

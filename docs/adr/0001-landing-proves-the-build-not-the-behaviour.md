@@ -1,7 +1,9 @@
 ---
-status: accepted
+status: accepted, amended by ADR-0003
 date: 2026-09-08
 ---
+
+> Amended the same day by ADR 0003: the landing rule below stands, but confirmation now follows the release rather than gating it, and the human checkpoint is the release notes. "Confirm before landing" and "confirm before releasing" are both retired.
 
 # Landing proves the build; confirmation gates the release
 

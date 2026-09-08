@@ -35,6 +35,10 @@ _Avoid_: merge, ship
 Cut a tag `v{ffmpeg}-{N}` from the locally built artefacts with `scripts/release.sh`. Immutable; John's hands only; `N` resets to 1 on a bump.
 _Avoid_: publish, deploy, ship
 
+**Release notes**:
+The document John reads to decide a release: every change landed since the last tag with its gate evidence, the consumer-facing changes, and the open needs-hands issues with their reasons. The human checkpoint of the loop.
+_Avoid_: changelog, summary
+
 **Confirm**:
-Run the consuming engine's suite against a landed change (through a local package override) and find it green. Confirmation is what a release requires; it is not what landing requires.
+Run the consuming engine's suite against a released tag and find it green. Confirmation follows a release; it gates neither landing nor releasing. A red confirmation burns the tag number and reopens the work.
 _Avoid_: verify, validate, test

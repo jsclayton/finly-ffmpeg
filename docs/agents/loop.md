@@ -48,11 +48,16 @@ perl -e 'alarm 1200; exec @ARGV' ./build.sh --smoke
   the gate; it names the broken shim where the gate would only say the
   probe failed to link.
 - **Not a landing check:** the consumer engine's suite lives in the engine
-  repo and cannot run here. Per ADR 0001, a change **lands** on the gate
-  alone; engine **confirmation** (through a local package override) gates
-  the **release**, which is John's. A bump or patch change files one
-  `needs-hands` issue at its end: confirm, then release. That issue never
-  blocks landing.
+  repo and cannot run here. Per ADR 0001 a change **lands** on the gate
+  alone. Per ADR 0003 the human checkpoint is the **release notes**: when
+  John asks to release (or landed tickets accumulate), the conductor
+  drafts them — every landed ticket since the last tag with its gate
+  evidence and deviations, consumer-facing changes (library majors,
+  removed symbols, new options), open `needs-hands` issues with their
+  reasons — and John decides to cut. **Confirmation** follows the release:
+  the engine repo's pin-bump ticket runs its suite against the tag; red
+  burns one `N` and reopens the work here. Nothing here files a "confirm
+  this" issue.
 
 ## Review duties
 
@@ -93,4 +98,4 @@ it must use:
 - **Default model:** opus. Sonnet only when the brief marks every bullet mechanical.
 - **Patches are never mechanical:** any ticket whose touchpoints include `scripts/patches/` — or whose gate could fail there (an `FFMPEG_VERSION` bump) — is briefed as **opus**, never sonnet, and the brief says so. A hunk that stops applying means upstream moved the hook site; deciding whether the patch is still needed, and where it now belongs, is judgment work, not a rebase.
 - **Concurrency:** 1 — and hold it there: every implementer's gate is a full six-slice FFmpeg cross-compile in its own worktree, so two at once double the CPU time of both. Cap 2 only when John says so.
-- **Needs-hands:** yes, and it means the release step (ADR 0001). A bump or patch change is machine-verified here by the gate and lands on it; the implementer files one `needs-hands` issue asking John to confirm through a local package override and then release. Everything else in this repo (scripts, docs, CI workflow) is machine-verifiable and files nothing.
+- **Needs-hands:** rare, and never "confirm this" (ADR 0003). A `needs-hands` issue names one reason — **feel**, **device**, **credential** or **decision** — and is runnable as written. A check with an oracle (the gate, a script, a validator, a comparison) is not needs-hands: the brief names the oracle. In this repo nearly everything is machine-verifiable; the expected count is zero per ticket. The release itself is John's act, made on the release notes, not a needs-hands issue.

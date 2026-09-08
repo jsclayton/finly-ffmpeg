@@ -10,7 +10,7 @@ the facts below. Keep each entry true; a stale test gate lands red code.
 - **Repo:** `jsclayton/finly-ffmpeg` — the slug in the implementer launch prompt.
 - **Landing:** rebase onto `main`, fast-forward, no merge commits, no PRs unless John asks.
 - **Memory file:** `implementation-loop.md` — the project-memory file the conductor keeps its state and handoff block in.
-- **Visibility: public.** This repo, its issues, issue comments (briefs, Done, Stuck, needs-hands) and the names of its sessions are all world-readable. `CLAUDE.md`'s generic rule applies to every one of them: no product names, private paths, media statistics or consumer internals. Say "the engine" or "the consumer"; never name its repository, types, tests or fixtures. Anything that would leak goes in the consumer's own tracker, not here.
+- **Visibility:** `public` — from `gh repo view --json visibility` (LGPL). **Public** means every issue, brief, Done/Stuck comment, needs-hands issue, commit message and session name is world-readable: nothing in them names a private consumer, a private path or hostname, a product, media-library statistics, or another repo's internals (its name, types, tests, fixtures). The repo's own generic rule in `CLAUDE.md` applies to the loop's writing, not only to the code. Say "the engine" or "the consumer"; anything that would leak goes in the consumer's own tracker, not here.
 
 ## Test gate
 

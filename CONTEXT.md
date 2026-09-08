@@ -36,8 +36,12 @@ Cut a tag `v{ffmpeg}-{N}` from the locally built artefacts with `scripts/release
 _Avoid_: publish, deploy, ship
 
 **Release notes**:
-The document John reads to decide a release: every change landed since the last tag with its gate evidence, the consumer-facing changes, and the open needs-hands issues with their reasons. The human checkpoint of the loop.
+The document John reads to decide a release: every change landed since the last tag with its gate evidence, the consumer-facing changes, and the open needs-hands issues with their reasons. The human checkpoint of the loop. Drafted by `scripts/release-notes.sh`, and opening with the breaking changes, because `v{ffmpeg}-{N}` cannot signal a break the way a semver major would.
 _Avoid_: changelog, summary
+
+**Breaking change**:
+A change a consumer must act on to move to the new tag: a bitstream filter to chain, a chain order, an option or symbol removed or renamed, a library major, a removed component. Its ticket carries the label `breaking` and a `## Consumer-facing change` section that the release notes quote.
+_Avoid_: major, API change
 
 **Confirm**:
 Run the consuming engine's suite against a released tag and find it green. Confirmation follows a release; it gates neither landing nor releasing. A red confirmation burns the tag number and reopens the work.

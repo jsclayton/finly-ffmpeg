@@ -16,3 +16,7 @@ The five vendored patches exist because this decoder-less build cannot recover c
 
 - FFmpeg 9.0's `dovi_split` bsf walks every NAL and could take over the enhancement-layer stripping half of patch 0005. It is not adopted in the 9.0.1 bump; an investigation ticket weighs chaining it (a consumer contract change), submitting the patches upstream so they vanish, or the status quo, and recommends one.
 - A patch that stops applying on a bump is first asked "does upstream now do this?" before it is rebased.
+
+## Addendum 2026-09-08 — the `dovi_split` investigation ran, and the chain landed
+
+The investigation the consequences above called for was done (`docs/research/patch-0005-toward-upstream.md`), and its recommendation — adopt `dovi_split` rather than keep duplicating it — was accepted. It landed at `da793aa`: the component set enables `dovi_split`, consumers chain `dovi_split=mode=bl_rpu` ahead of `dovi_rpu=convert=p81`, and 0005 shrank to the RPU mutation and the configuration-record rewrite, removing no upstream line at all. This is the rule working as written, consumer contract change and coordinated release included; the sentence above that says `dovi_split` "is not adopted in the 9.0.1 bump" records where that bump stood, not where the repo stands now.

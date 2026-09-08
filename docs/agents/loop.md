@@ -51,16 +51,28 @@ perl -e 'alarm 1200; exec @ARGV' ./build.sh --smoke
   repo and cannot run here. Per ADR 0001 a change **lands** on the gate
   alone. Per ADR 0003 the human checkpoint is the **release notes**: when
   John asks to release (or landed tickets accumulate), the conductor
-  drafts them — every landed ticket since the last tag with its gate
-  evidence and deviations, consumer-facing changes (library majors,
-  removed symbols, new options), open `needs-hands` issues with their
-  reasons — and John decides to cut. **Confirmation** follows the release:
-  the engine repo's pin-bump ticket runs its suite against the tag; red
+  drafts them with `bash scripts/release-notes.sh` — every landed ticket
+  since the last tag with its gate evidence and deviations, consumer-facing
+  changes (library majors, removed symbols, new options), open `needs-hands`
+  issues with their reasons — and John decides to cut. The notes **open
+  with breaking changes**, and that section prints even when it is empty:
+  `v{ffmpeg}-{N}` cannot signal a break the way a semver major would, so
+  the notes are the only place a consumer learns the contract moved. A
+  ticket that moves it — a bitstream filter to chain or a chain order, an
+  option or symbol removed or renamed, a library major, a removed
+  component — carries the label **`breaking`** and a
+  `## Consumer-facing change` section in its body saying what a consumer
+  must do, which the draft quotes verbatim. **Confirmation** follows the
+  release: the engine repo's pin-bump ticket runs its suite against the tag; red
   burns one `N` and reopens the work here. Nothing here files a "confirm
   this" issue. `bash scripts/release.sh --dry-run` runs the clean-tree,
   xcframework and LGPL-bundle checks and prints the tag and the bundle a
   cut would use, then stops: nothing zipped, no `Package.swift` rewrite,
-  no commit, tag, push or release. The draft quotes both. It is not the
+  no commit, tag, push or release. The draft quotes both — that one line
+  and the release command — and when the dry run cannot be run it says so
+  with its exit code instead of failing: the dry run fetches tags, so it
+  needs repository credentials that an unattended session does not have,
+  and losing the notes to that would be the wrong trade. It is not the
   whole of `release.sh` — `gh` auth and the manifest rewrite are only
   exercised by the real run.
 

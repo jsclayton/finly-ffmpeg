@@ -19,3 +19,7 @@ ADR 0001 put engine **confirmation** before the **release** and made that step J
 - The conductor drafts release notes when John asks to release, or when landed tickets accumulate: every landed ticket since the last tag with its gate evidence and deviations, the consumer-facing changes (API majors, removed symbols, new options), the open needs-hands issues with their reasons, and what confirmation the release will trigger. John reads that, not each issue.
 - Cutting the release stays John's act, whether by hand or by asking the conductor to run the release script while he watches, because the tag is immutable.
 - The first instance is `v9.0.1-1`: notes drafted on the needs-hands issue the bump filed; confirmation is the engine repo's pin-bump ticket.
+
+## Addendum 2026-09-08 — the notes open with the breaking changes
+
+Versioning here is `v{ffmpeg}-{N}`, so `N` carries no signal a consumer can read: it cannot say "this one changes what you must do" the way a semver major can, and the pin is `.exact` besides, so nothing resolves a break for anyone. That makes these notes the only place a consumer learns the contract moved, which is too much to leave to prose — a ticket that changes the contract now carries the label `breaking` and a `## Consumer-facing change` section in its body, and the draft opens with those sections quoted verbatim, printing "None" when there are none so a reader can tell none from forgotten. The decision is unchanged; this only names the one part of the document that a consumer, rather than John, is the audience for.

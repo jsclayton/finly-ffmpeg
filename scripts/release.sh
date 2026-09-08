@@ -27,6 +27,9 @@
 #                            rewriting Package.swift, committing, tagging,
 #                            pushing or creating the release.
 #
+# The step before this one is `bash scripts/release-notes.sh` — the notes John
+# reads to decide the cut (ADR 0003). It is read-only and quotes the dry run.
+#
 # Requires: a clean tree, artifacts/ from a ./build.sh run, gh authenticated.
 #
 # The LGPL bundle is chosen BY VERSION — artifacts/lgpl/finly-ffmpeg-lgpl-

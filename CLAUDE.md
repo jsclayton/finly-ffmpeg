@@ -94,7 +94,7 @@ The five canonical triage labels, unrenamed (`needs-triage`, `needs-info`, `read
 
 ### Domain docs
 
-Single-context: `CONTEXT.md` + `docs/adr/` at the repo root (neither exists yet). See `docs/agents/domain.md`.
+Single-context: `CONTEXT.md` (glossary) + `docs/adr/` (decisions) at the repo root. See `docs/agents/domain.md`.
 
 ## Implementation loop
 

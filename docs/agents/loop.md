@@ -79,7 +79,8 @@ it must use:
 - `.claude/skills/bump-ffmpeg/SKILL.md` — the bump procedure, for any ticket that changes `FFMPEG_VERSION`.
 - `NOTICE.md` — LGPL obligations, for any ticket that touches packaging or linkage.
 - `docs/research/` — primary-source findings; a brief cites the note its ticket came from.
-- No `CONTEXT.md` or `docs/adr/` yet (see `docs/agents/domain.md`); the vocabulary is the one `CLAUDE.md` and `README.md` use (slice, xcframework, patch 000N, gate, LGPL bundle, `v{ffmpeg}-{N}`).
+- `CONTEXT.md` — the glossary (slice, patch, bump, LGPL bundle; gate, land, release, confirm); use its words and avoid the ones it lists.
+- `docs/adr/` — ADR 0001 (landing proves the build; confirmation gates the release) and ADR 0002 (upstream is the gold standard; every patch is debt). A brief that touches a bump, a patch or the release step cites them.
 
 ## Research notes
 

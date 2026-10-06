@@ -25,12 +25,21 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
+      # The newest Xcode 27 on the image, the major the releases are built with. No fallback: a
+      # missing Xcode 27 fails here instead of checking the build with another toolchain (until
+      # 2026-10-06 it silently fell back to Xcode 26.3).
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_26.app || sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+        run: |
+          set -euo pipefail
+          XCODE="$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)"
+          if [[ -z "$XCODE" ]]; then
+            echo "::error::no Xcode 27 on this runner image"; ls -d /Applications/Xcode_*.app; exit 1
+          fi
+          sudo xcode-select -s "$XCODE"
 
       - name: Show toolchain
         run: |

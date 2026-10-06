@@ -10,6 +10,11 @@
 # Per library we produce one .xcframework with four slices:
 #   ios-device (arm64) · ios-simulator (arm64+x86_64)
 #   tvos-device (arm64) · tvos-simulator (arm64+x86_64)
+#
+# Each slice carries its framework's dSYM (<slice>/dSYMs/<lib>.framework.dSYM,
+# named by DebugSymbolsPath in the xcframework's Info.plist), so crashes inside
+# these libraries can be symbolicated. The shipped binaries are stripped to
+# their exported symbols; the dSYM is written from the unstripped binary first.
 
 source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 
@@ -18,7 +23,9 @@ FWROOT="${BUILD_DIR}/frameworks"
 XCF_OUT="${ARTIFACTS_DIR}/xcframework"
 INC_OUT="${ARTIFACTS_DIR}/include"
 
-command -v install_name_tool >/dev/null || die "install_name_tool not found"
+for tool in install_name_tool dsymutil dwarfdump strip; do
+  command -v "${tool}" >/dev/null || die "${tool} not found"
+done
 
 [[ -d "${INSTALL_ROOT}" ]] || die "no per-arch installs — run scripts/build-ffmpeg.sh first"
 
@@ -66,6 +73,29 @@ fixup_install_names() {
       fi
     done
   done
+}
+
+# write a framework binary's dSYM. dsymutil warns, and still exits 0, for every
+# object file in the debug map it cannot read: the dSYM it writes then silently
+# lacks those files' DWARF. So any warning is fatal here.
+make_dsym() { # binary, dsym, label
+  local binary="$1" dsym="$2" label="$3" out
+  rm -rf "${dsym}"
+  out="$(dsymutil "${binary}" -o "${dsym}" 2>&1)" || { echo "${out}" >&2; die "dsymutil failed for ${label}"; }
+  if [[ -n "${out}" ]]; then
+    echo "${out}" | head -20 >&2
+    die "dsymutil warned for ${label}: the dSYM would be incomplete"
+  fi
+}
+
+# the binary and its dSYM must carry the same UUID for every arch, or a crash
+# report from the binary can never be matched to the dSYM.
+check_uuids() { # binary, dsym, label
+  local bin_uuids dsym_uuids
+  bin_uuids="$(dwarfdump --uuid "$1" | awk '{print $2, $3}' | sort)"
+  dsym_uuids="$(dwarfdump --uuid "$2" | awk '{print $2, $3}' | sort)"
+  [[ -n "${bin_uuids}" && "${bin_uuids}" == "${dsym_uuids}" ]] \
+    || die "UUID mismatch for $3: binary [${bin_uuids}] vs dSYM [${dsym_uuids}]"
 }
 
 write_info_plist() { # dest, name, slice
@@ -119,10 +149,19 @@ for lib in "${FF_LIBS[@]}"; do
     fi
 
     fixup_install_names "${local_bin}" "${lib}"
+
+    # dSYM from the final binary (fat for the simulator slices, so it covers
+    # every arch in it), while the debug map still points at the object files
+    # in build/obj; then strip the shipped binary to its exported symbols.
+    dsym="${FWROOT}/${slice}/${lib}.framework.dSYM"
+    make_dsym "${local_bin}" "${dsym}" "${lib}/${slice}"
+    strip -x "${local_bin}" || die "strip failed for ${lib}/${slice}"
+    check_uuids "${local_bin}" "${dsym}" "${lib}/${slice}"
+
     write_info_plist "${fwdir}/Info.plist" "${lib}" "${slice}"
     codesign --force --sign - --timestamp=none "${fwdir}" >/dev/null 2>&1 || true
 
-    xcf_args+=(-framework "${fwdir}")
+    xcf_args+=(-framework "${fwdir}" -debug-symbols "${dsym}")
   done
 
   xcodebuild -create-xcframework "${xcf_args[@]}" \

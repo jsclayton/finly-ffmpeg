@@ -22,6 +22,33 @@ Device slices are single-arch; each simulator slice is `lipo`'d (arm64 + x86_64)
 so it runs on both Apple Silicon and Intel Macs. The four xcframeworks are
 `libavutil`, `libavcodec`, `libavformat`, and `libswresample`.
 
+**Debug symbols ship inside the xcframeworks**, so crashes inside these
+libraries can be symbolicated. Every slice of every xcframework carries its
+framework's dSYM at `<slice>/dSYMs/<lib>.framework.dSYM`, named by
+`DebugSymbolsPath` in the xcframework's `Info.plist`. The libraries are
+compiled with `-g` at the same optimization level, the dSYM is written from
+each final framework binary (the fat one, for a simulator slice), and only then
+is the shipped binary stripped (`strip -x`, exported symbols only, as before),
+so the binary and its dSYM carry the same UUID for every arch. `make-xcframeworks.sh`
+fails the build on a dSYM that would be incomplete or whose UUIDs do not match.
+Source and build paths in the debug info are mapped to relative names
+(`build/obj/<sdk>-<arch>/src/...`), so the dSYMs carry no path from the machine
+that built them.
+
+The dSYMs roughly triple the size of the release zips; the shipped binaries
+keep their size and their exported symbols. Measured on FFmpeg 9.0.1, as the
+`ditto` zips `release.sh` makes:
+
+| xcframework zip | without dSYMs | with dSYMs |
+|---|---|---|
+| `libavcodec`    | 6.5 MB | 19.6 MB |
+| `libavformat`   | 2.6 MB | 9.6 MB |
+| `libavutil`     | 1.8 MB | 5.1 MB |
+| `libswresample` | 0.3 MB | 0.7 MB |
+
+The dSYMs sit beside each slice's `.framework`, not inside it, so embedding a
+framework in an app does not carry its dSYM into the app bundle.
+
 ## Design constraints (deliberate)
 
 These are fixed by the configure component set in `scripts/config.sh` — the
@@ -129,7 +156,8 @@ consume a local checkout via an Xcode local-package override (and run
 ## Releasing
 
 `bash scripts/release.sh` — cuts a release from the **locally built,
-verified** artifacts: zips the xcframeworks, computes SwiftPM checksums from
+verified** artifacts: refuses an xcframework that is missing a slice's dSYM,
+zips the xcframeworks (dSYMs inside), computes SwiftPM checksums from
 those exact bytes, rewrites `Package.swift` to this tag's asset URLs, commits,
 tags `v{ffmpeg}-{N}`, pushes, and uploads the assets + LGPL bundle. The
 tag-triggered GitHub Action is a from-scratch reproducibility check only — it

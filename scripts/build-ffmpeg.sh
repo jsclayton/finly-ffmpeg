@@ -33,6 +33,14 @@ build_one() {
   # stamps the correct LC_BUILD_VERSION for xcframework bucketing.
   local flags="-target ${triple} -arch ${arch} -isysroot ${sysroot} -fPIC"
 
+  # The debug info (--enable-debug in config.sh) records source and build paths;
+  # map them to stable relative names so the published dSYMs are the same
+  # wherever the build ran and carry no path from the machine that built them.
+  # Debug info only: __FILE__ strings in the binaries are not touched.
+  local cflags="${flags}"
+  cflags+=" -fdebug-prefix-map=${FFMPEG_SRC_DIR}=ffmpeg-${FFMPEG_VERSION}"
+  cflags+=" -fdebug-prefix-map=${BUILD_DIR}=build"
+
   rm -rf "${objdir}" "${prefix}"
   mkdir -p "${objdir}"
 
@@ -44,7 +52,7 @@ build_one() {
       --cc="${cc}" \
       --as="${cc}" \
       --sysroot="${sysroot}" \
-      --extra-cflags="${flags}" \
+      --extra-cflags="${cflags}" \
       --extra-ldflags="${flags}" \
       "${FF_CONFIGURE[@]}" \
       "${FF_COMPONENTS[@]}" \

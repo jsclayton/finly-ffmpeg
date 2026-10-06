@@ -16,7 +16,8 @@
 # What it does, in order:
 #   1. next N from existing v{VER}-* tags
 #   2. zip the four xcframeworks (ditto --keepParent: .xcframework at zip root,
-#      the layout SwiftPM requires) + the LGPL bundle, renamed to the tag
+#      the layout SwiftPM requires; each slice's dSYM rides inside) + the LGPL
+#      bundle, renamed to the tag
 #   3. swift package compute-checksum per zip
 #   4. rewrite Package.swift's binaryTargets to url:checksum: for this tag
 #   5. commit, tag, push main + tag
@@ -71,6 +72,21 @@ VER="$(sed -n 's/^FFMPEG_VERSION="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' scripts/config
 for lib in "${FF_LIBS[@]}"; do
   [[ -d "artifacts/xcframework/${lib}.xcframework" ]] \
     || { echo "missing artifacts/xcframework/${lib}.xcframework — run ./build.sh" >&2; exit 1; }
+done
+# Every slice of every xcframework carries its dSYM: the zips below are the
+# .xcframework directories whole, so what is checked here is what ships. A build
+# from before the dSYMs (or a hand-assembled xcframework) is refused, not
+# released without them.
+for lib in "${FF_LIBS[@]}"; do
+  xcf="artifacts/xcframework/${lib}.xcframework"
+  n="$(plutil -extract AvailableLibraries raw "${xcf}/Info.plist")"
+  for (( i = 0; i < n; i++ )); do
+    id="$(plutil -extract "AvailableLibraries.${i}.LibraryIdentifier" raw "${xcf}/Info.plist")"
+    dsyms="$(plutil -extract "AvailableLibraries.${i}.DebugSymbolsPath" raw "${xcf}/Info.plist" 2>/dev/null)" \
+      || { echo "${lib} ${id}: no DebugSymbolsPath — run ./build.sh" >&2; exit 1; }
+    [[ -d "${xcf}/${id}/${dsyms}/${lib}.framework.dSYM" ]] \
+      || { echo "${lib} ${id}: missing ${dsyms}/${lib}.framework.dSYM — run ./build.sh" >&2; exit 1; }
+  done
 done
 LGPL_TAR="artifacts/lgpl/finly-ffmpeg-lgpl-${VER}.tar.gz"
 [[ -f "$LGPL_TAR" ]] || { echo "missing ${LGPL_TAR} — run ./build.sh" >&2; exit 1; }

@@ -119,7 +119,13 @@ FF_CONFIGURE=(
   --disable-everything
   --disable-programs           # no ffmpeg/ffprobe/ffplay CLIs (can't exec on iOS anyway)
   --disable-doc
-  --disable-debug
+  # Debug info, so crashes inside these libraries can be symbolicated. --enable-debug
+  # adds -g and nothing else: the optimization level is unchanged. FFmpeg's own
+  # install-time strip is off because it would run before dsymutil could read the
+  # debug map; make-xcframeworks.sh writes each framework's dSYM and then strips
+  # the shipped binary itself, with the same `strip -x` the install used to run.
+  --enable-debug
+  --disable-stripping
   --disable-network            # all I/O via app-side custom AVIOContext
   --disable-asm                # acceptable here; keeps the toolchain minimal
   --disable-static

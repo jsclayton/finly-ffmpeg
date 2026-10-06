@@ -126,7 +126,17 @@ FF_CONFIGURE=(
   # the shipped binary itself, with the same `strip -x` the install used to run.
   --enable-debug
   --disable-stripping
-  --disable-network            # all I/O via app-side custom AVIOContext
+  # Frame pointers, so unwinders that walk them, as in-process crash reporters
+  # do, see every frame. Apple's arm64 ABI requires x29 to always address a valid
+  # frame record, but configure adds -fomit-frame-pointer unconditionally: those
+  # functions save x29/x30 and never set x29, and a frame-pointer walk skips the
+  # caller of each one. --extra-cflags lands before configure's flag, so it
+  # cannot undo it; --optflags lands after it. -O3 is the optimization level
+  # configure picks for clang on its own, kept as is. Leaf functions may still
+  # omit the frame record (clang's own Darwin default): x29 then still points at
+  # the caller's valid record, and the return address is in the link register.
+  "--optflags=-O3 -fno-omit-frame-pointer"
+  --disable-network           # all I/O via app-side custom AVIOContext
   --disable-asm                # acceptable here; keeps the toolchain minimal
   --disable-static
   --enable-shared              # dynamic frameworks satisfy LGPL relink by construction

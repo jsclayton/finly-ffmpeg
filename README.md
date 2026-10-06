@@ -41,13 +41,20 @@ keep their size and their exported symbols. Measured on FFmpeg 9.0.1, as the
 
 | xcframework zip | without dSYMs | with dSYMs |
 |---|---|---|
-| `libavcodec`    | 6.5 MB | 19.6 MB |
+| `libavcodec`    | 6.5 MB | 19.5 MB |
 | `libavformat`   | 2.6 MB | 9.6 MB |
-| `libavutil`     | 1.8 MB | 5.1 MB |
+| `libavutil`     | 1.8 MB | 5.0 MB |
 | `libswresample` | 0.3 MB | 0.7 MB |
 
 The dSYMs sit beside each slice's `.framework`, not inside it, so embedding a
 framework in an app does not carry its dSYM into the app bundle.
+
+**The C code keeps its frame pointers**, so unwinders that walk them, as
+in-process crash reporters do, see every frame. Apple's arm64 ABI requires x29
+to always address a valid frame record; configure adds `-fomit-frame-pointer`
+on its own, and `--optflags` in `scripts/config.sh` puts
+`-fno-omit-frame-pointer` after it. Leaf functions may still skip the frame
+record, as clang does by default on Apple platforms.
 
 ## Design constraints (deliberate)
 

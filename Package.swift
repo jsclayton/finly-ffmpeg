@@ -28,20 +28,20 @@ let package = Package(
   targets: [
     .binaryTarget(
       name: "libavutil",
-      url: "https://github.com/jsclayton/finly-ffmpeg/releases/download/v9.0.1-2/libavutil.xcframework.zip",
-      checksum: "6734b8c35f5b292086cc185ced3e32fe0ebb2d46d5222961cce442254174404b"),
+      url: "https://github.com/jsclayton/finly-ffmpeg/releases/download/v9.0.1-3/libavutil.xcframework.zip",
+      checksum: "022108eafcf435fb183dc7764bb86e7a7116f8fad3364d24c1e98760e260e827"),
     .binaryTarget(
       name: "libavcodec",
-      url: "https://github.com/jsclayton/finly-ffmpeg/releases/download/v9.0.1-2/libavcodec.xcframework.zip",
-      checksum: "33667af64961dd479188c886b267c5b89ea47ec2189b32896aa7b60691b0a47e"),
+      url: "https://github.com/jsclayton/finly-ffmpeg/releases/download/v9.0.1-3/libavcodec.xcframework.zip",
+      checksum: "b5835f3d31e81358ad2b1946fa914ba68cab5bdf5639143ad52b280c3f22d61a"),
     .binaryTarget(
       name: "libavformat",
-      url: "https://github.com/jsclayton/finly-ffmpeg/releases/download/v9.0.1-2/libavformat.xcframework.zip",
-      checksum: "206ac37beba8a7805539115fc947ece124a71905c00f853af9662a5922ae3b8f"),
+      url: "https://github.com/jsclayton/finly-ffmpeg/releases/download/v9.0.1-3/libavformat.xcframework.zip",
+      checksum: "42d06d35e6a591ee18d32aff690a7e2bfde27ba8f82d26461847839a21ac5dfb"),
     .binaryTarget(
       name: "libswresample",
-      url: "https://github.com/jsclayton/finly-ffmpeg/releases/download/v9.0.1-2/libswresample.xcframework.zip",
-      checksum: "1016a8c8fad441f136c3419301d85daed28214838e58e118eeb6d9dd10b5af7a"),
+      url: "https://github.com/jsclayton/finly-ffmpeg/releases/download/v9.0.1-3/libswresample.xcframework.zip",
+      checksum: "9681449a385ff1f9035b5bcc8a0007121258fe48602acc1657a30bb6900a8927"),
     .target(
       name: "CFFmpeg",
       dependencies: ["libavutil", "libavcodec", "libavformat", "libswresample"],

@@ -15,6 +15,10 @@
 # named by DebugSymbolsPath in the xcframework's Info.plist), so crashes inside
 # these libraries can be symbolicated. The shipped binaries are stripped to
 # their exported symbols; the dSYM is written from the unstripped binary first.
+#
+# Each framework also carries a privacy manifest (PrivacyInfo.xcprivacy, at the
+# bundle root), copied from scripts/privacy/<lib>.xcprivacy. The build checks
+# every manifest against the binary it ships with; see check_privacy_manifest.
 
 source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 
@@ -22,8 +26,9 @@ INSTALL_ROOT="${BUILD_DIR}/install"
 FWROOT="${BUILD_DIR}/frameworks"
 XCF_OUT="${ARTIFACTS_DIR}/xcframework"
 INC_OUT="${ARTIFACTS_DIR}/include"
+PRIVACY_DIR="${CONFIG_DIR}/privacy"
 
-for tool in install_name_tool dsymutil dwarfdump strip; do
+for tool in install_name_tool dsymutil dwarfdump strip nm plutil; do
   command -v "${tool}" >/dev/null || die "${tool} not found"
 done
 
@@ -98,6 +103,111 @@ check_uuids() { # binary, dsym, label
     || die "UUID mismatch for $3: binary [${bin_uuids}] vs dSYM [${dsym_uuids}]"
 }
 
+# --- privacy manifests -------------------------------------------------------
+# Apple requires a privacy manifest in every framework that calls a "required
+# reason" API, declaring each API category it uses and why. An app's own
+# manifest cannot cover a framework's use. The reasons in scripts/privacy/ are
+# chosen by a person; the build never picks one. It checks that the categories
+# a manifest declares are exactly the categories its binary imports, so an
+# FFmpeg bump that starts calling a listed API fails here instead of shipping
+# undeclared, and a manifest cannot declare an API its binary does not call.
+
+# Apple's required-reason C functions, by category ("Describing use of required
+# reason API", developer.apple.com). The 64-suffixed names are the same calls
+# under their older symbols. The getattrlist family is listed under both
+# FileTimestamp and DiskSpace, so which one it is for is a person's decision:
+# the check refuses to guess.
+api_category() { # C function name -> category, "ambiguous", or nothing
+  case "$1" in
+    stat|fstat|fstatat|lstat|stat64|fstat64|lstat64)
+      echo "NSPrivacyAccessedAPICategoryFileTimestamp" ;;
+    statfs|statvfs|fstatfs|fstatvfs|statfs64|fstatfs64)
+      echo "NSPrivacyAccessedAPICategoryDiskSpace" ;;
+    mach_absolute_time)
+      echo "NSPrivacyAccessedAPICategorySystemBootTime" ;;
+    getattrlist|getattrlistbulk|fgetattrlist|getattrlistat)
+      echo "ambiguous" ;;
+  esac
+}
+
+# the categories a binary imports, sorted and unique, one per line. Reads every
+# arch of a fat binary; drops the leading underscore and any $-suffix
+# ($INODE64, $UNIX2003) from each undefined symbol.
+imported_categories() { # binary, label
+  local syms fn category
+  syms="$(nm -u -j -arch all "$1")" || die "nm failed for $2"
+  for fn in $(echo "${syms}" | sed -n 's/^_//p' | sed 's/\$.*//' | sort -u); do
+    category="$(api_category "${fn}")"
+    [[ "${category}" != "ambiguous" ]] \
+      || die "$2 imports ${fn}: ambiguous, decide FileTimestamp or DiskSpace in its manifest and in api_category"
+    [[ -z "${category}" ]] || echo "${category}"
+  done | sort -u
+}
+
+# Apple's reasons for each category the check knows. The build never picks
+# one; it only refuses a reason that does not belong to its category.
+allowed_reasons() { # category -> its reason codes, space-separated
+  case "$1" in
+    NSPrivacyAccessedAPICategoryFileTimestamp)  echo "DDA9.1 C617.1 3B52.1 0A2A.1" ;;
+    NSPrivacyAccessedAPICategoryDiskSpace)      echo "85F4.1 E174.1 7D9E.1 B728.1" ;;
+    NSPrivacyAccessedAPICategorySystemBootTime) echo "35F9.1 8FFB.1 3D61.1" ;;
+  esac
+}
+
+# a key path holds a value of the given plist type. `plutil -extract raw`
+# prints an array's count and any other value as itself, so the type is
+# checked first.
+require_type() { # manifest, key path, type, label
+  [[ "$(plutil -type "$2" "$1" 2>/dev/null)" == "$3" ]] || die "$4: $2 must be of type $3"
+}
+
+# the categories a manifest declares, sorted, one per line. Each names at least
+# one reason, and every reason is one of Apple's for that category.
+declared_categories() { # manifest, label
+  local count i category key reasons j reason
+  require_type "$1" NSPrivacyAccessedAPITypes array "$2"
+  count="$(plutil -extract NSPrivacyAccessedAPITypes raw "$1")"
+  for ((i = 0; i < count; i++)); do
+    key="NSPrivacyAccessedAPITypes.${i}"
+    require_type "$1" "${key}.NSPrivacyAccessedAPIType" string "$2"
+    require_type "$1" "${key}.NSPrivacyAccessedAPITypeReasons" array "$2"
+    category="$(plutil -extract "${key}.NSPrivacyAccessedAPIType" raw "$1")"
+    reasons="$(plutil -extract "${key}.NSPrivacyAccessedAPITypeReasons" raw "$1")"
+    [[ "${reasons}" -gt 0 ]] || die "$2: ${category} gives no reason"
+    for ((j = 0; j < reasons; j++)); do
+      require_type "$1" "${key}.NSPrivacyAccessedAPITypeReasons.${j}" string "$2"
+      reason="$(plutil -extract "${key}.NSPrivacyAccessedAPITypeReasons.${j}" raw "$1")"
+      [[ " $(allowed_reasons "${category}") " == *" ${reason} "* ]] \
+        || die "$2: ${reason} is not one of Apple's reasons for ${category}"
+    done
+    echo "${category}"
+  done | sort
+}
+
+# a manifest lints, tracks nothing, collects nothing, and declares exactly the
+# required-reason categories its binary imports.
+check_privacy_manifest() { # binary, manifest, label
+  local binary="$1" manifest="$2" label="$3" imported declared
+  [[ -f "${manifest}" ]] || die "no privacy manifest for ${label}"
+  plutil -lint -s "${manifest}" || die "privacy manifest for ${label} does not lint"
+  require_type "${manifest}" NSPrivacyTracking bool "${label}"
+  require_type "${manifest}" NSPrivacyTrackingDomains array "${label}"
+  require_type "${manifest}" NSPrivacyCollectedDataTypes array "${label}"
+  [[ "$(plutil -extract NSPrivacyTracking raw "${manifest}")" == "false" ]] \
+    || die "privacy manifest for ${label}: NSPrivacyTracking must be false"
+  [[ "$(plutil -extract NSPrivacyTrackingDomains raw "${manifest}")" == "0" ]] \
+    || die "privacy manifest for ${label}: NSPrivacyTrackingDomains must be empty"
+  [[ "$(plutil -extract NSPrivacyCollectedDataTypes raw "${manifest}")" == "0" ]] \
+    || die "privacy manifest for ${label}: NSPrivacyCollectedDataTypes must be empty"
+  # each helper has already said why when it fails
+  imported="$(imported_categories "${binary}" "${label}")" || exit 1
+  declared="$(declared_categories "${manifest}" "${label}")" || exit 1
+  [[ "${declared}" == "$(echo "${declared}" | sort -u)" ]] \
+    || die "privacy manifest for ${label} declares a category twice: [${declared//$'\n'/, }]"
+  [[ "${imported}" == "${declared}" ]] \
+    || die "privacy manifest for ${label} declares [${declared//$'\n'/, }] but the binary imports [${imported//$'\n'/, }]"
+}
+
 write_info_plist() { # dest, name, slice
   local dest="$1" name="$2" slice="$3"
   local platform minos; platform="$(slice_platform "${slice}")"; minos="$(slice_minos "${slice}")"
@@ -159,6 +269,10 @@ for lib in "${FF_LIBS[@]}"; do
     check_uuids "${local_bin}" "${dsym}" "${lib}/${slice}"
 
     write_info_plist "${fwdir}/Info.plist" "${lib}" "${slice}"
+    # the manifest goes in before the seal, so the signature covers it
+    cp "${PRIVACY_DIR}/${lib}.xcprivacy" "${fwdir}/PrivacyInfo.xcprivacy" \
+      || die "no privacy manifest at scripts/privacy/${lib}.xcprivacy"
+    check_privacy_manifest "${local_bin}" "${fwdir}/PrivacyInfo.xcprivacy" "${lib}/${slice}"
     codesign --force --sign - --timestamp=none "${fwdir}" >/dev/null 2>&1 || true
 
     xcf_args+=(-framework "${fwdir}" -debug-symbols "${dsym}")

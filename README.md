@@ -22,6 +22,14 @@ Device slices are single-arch; each simulator slice is `lipo`'d (arm64 + x86_64)
 so it runs on both Apple Silicon and Intel Macs. The four xcframeworks are
 `libavutil`, `libavcodec`, `libavformat`, and `libswresample`.
 
+**Each framework carries a privacy manifest** (`PrivacyInfo.xcprivacy` at the
+bundle root, from `scripts/privacy/<lib>.xcprivacy`), and `make-xcframeworks.sh`
+fails the build when a manifest's API categories differ from the required-reason
+APIs its binary imports. `libavutil` calls `fstat` and `libavformat` calls
+`fstat` and `lstat`, only inside functions the consumer calls, so both declare
+file timestamps with reason `0A2A.1`; `libavcodec` and `libswresample` declare
+none.
+
 **Debug symbols ship inside the xcframeworks**, so crashes inside these
 libraries can be symbolicated. Every slice of every xcframework carries its
 framework's dSYM at `<slice>/dSYMs/<lib>.framework.dSYM`, named by

@@ -43,9 +43,25 @@ log "assembling LGPL bundle: ${BUNDLE_NAME}"
 cp "${FFMPEG_TARBALL}" "${BUNDLE_DIR}/"
 echo "${FFMPEG_SHA256}  ffmpeg-${FFMPEG_VERSION}.tar.xz" > "${BUNDLE_DIR}/ffmpeg-${FFMPEG_VERSION}.tar.xz.sha256"
 
-# 2) the exact build scripts (so the build is reproducible byte-for-byte)
-cp "${CONFIG_DIR}"/*.sh "${BUNDLE_DIR}/scripts/"
-if [[ -d "${PATCHES_DIR}" ]]; then cp -R "${PATCHES_DIR}" "${BUNDLE_DIR}/scripts/patches"; fi
+# 2) the exact build scripts, the whole scripts/ tree: the scripts, the patches,
+# and the privacy manifests make-xcframeworks.sh copies into each framework.
+# Without any one of them the bundle cannot rebuild as README-LGPL.md says. The
+# bundle's scripts/ must then hold exactly the files git tracks under scripts/:
+# nothing left out, and no untracked file let in. The bytes are the checkout's
+# as they stand, so build the bundle a release ships from a clean tree: then
+# its scripts/ are the commit's.
+cp -R "${CONFIG_DIR}/." "${BUNDLE_DIR}/scripts/"
+check_bundle_scripts() {
+  local tracked bundled
+  tracked="$(git -C "${ROOT_DIR}" ls-files -- scripts | sed 's#^scripts/##' | LC_ALL=C sort)" \
+    || die "cannot list scripts/ with git: the LGPL bundle is made from a git checkout"
+  [[ -n "${tracked}" ]] || die "git lists no file under scripts/"
+  bundled="$(cd "${BUNDLE_DIR}/scripts" && find . -type f | sed 's#^\./##' | LC_ALL=C sort)"
+  [[ "${bundled}" == "${tracked}" ]] \
+    || die "the LGPL bundle's scripts/ differs from the tracked scripts/:
+$(diff <(echo "${tracked}") <(echo "${bundled}") | sed -n 's/^< /  missing: /p; s/^> /  untracked: /p')"
+}
+check_bundle_scripts
 
 # 3) the license texts, lifted from the source tree if it is extracted
 if [[ -d "${FFMPEG_SRC_DIR}" ]]; then
@@ -104,6 +120,26 @@ of the upstream tarball, so the complete corresponding source is the tarball
 Because the libraries are dynamic frameworks, you may replace them with your own
 build of FFmpeg ${FFMPEG_VERSION} (or a compatible LGPL version): rebuild using
 the scripts here, then substitute the resulting \`*.xcframework\` binaries.
+
+## Rebuilding from this bundle
+On a Mac with Xcode, from this directory:
+
+\`\`\`
+mkdir -p vendor && cp ffmpeg-${FFMPEG_VERSION}.tar.xz vendor/
+bash scripts/fetch-ffmpeg.sh
+bash scripts/build-ffmpeg.sh
+bash scripts/make-xcframeworks.sh
+bash scripts/smoke-test.sh
+\`\`\`
+
+\`fetch-ffmpeg.sh\` verifies the tarball's SHA-256 and applies the patches (it
+downloads the tarball itself when \`vendor/\` does not hold it). The
+xcframeworks land in \`artifacts/xcframework/\`. \`smoke-test.sh\` is optional:
+it links a probe against the simulator slice and runs it in a booted iOS
+simulator. The build refuses an Xcode installed under your home directory
+(\`~/Applications/Xcode.app\`): configure records the compiler's path in every
+binary, and \`make-xcframeworks.sh\` fails on any path under the home. Use an
+Xcode in \`/Applications\`.
 
 ## Written offer
 The complete corresponding source for the FFmpeg version used is included in

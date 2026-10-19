@@ -40,13 +40,17 @@ is the shipped binary stripped (`strip -x`, exported symbols only, as before),
 so the binary and its dSYM carry the same UUID for every arch. `make-xcframeworks.sh`
 fails the build on a dSYM that would be incomplete or whose UUIDs do not match.
 Source and build paths in the debug info are mapped to relative names
-(`build/obj/<sdk>-<arch>/src/...`), so the dSYMs carry no path from the machine
-that built them. The binaries carry none either: configure records its command
-line, absolute paths included, as the string `avutil_configuration()` returns,
-and `build-ffmpeg.sh` rewrites the checkout root in it to `.` (so it reads
-`--prefix=./build/install/<sdk>-<arch>`). `make-xcframeworks.sh` fails the build
-when any shipped binary or dSYM holds the checkout's path or the builder's home
-directory. The release zips carry no AppleDouble (`__MACOSX/`, `._`) entries:
+(`build/obj/<sdk>-<arch>/src/...`), and the relocation map `dsymutil` writes
+beside the DWARF (`Contents/Resources/Relocations/`, which names the binary by
+its absolute path) is removed: it is input for linking a mergeable library,
+which these frameworks are not, and symbolication reads only the DWARF. So the
+dSYMs carry no path from the machine that built them. The binaries carry none
+either: configure records its command line, absolute paths included, as the
+string `avutil_configuration()` returns, and `build-ffmpeg.sh` rewrites the
+checkout root in it to `.` (so it reads `--prefix=./build/install/<sdk>-<arch>`).
+`make-xcframeworks.sh` fails the build when any file in an assembled
+xcframework (binary, dSYM or plist) holds the checkout's path or the builder's
+home directory. The release zips carry no AppleDouble (`__MACOSX/`, `._`) entries:
 `scripts/zip-xcframeworks.sh` zips without resource forks or extended
 attributes and refuses a zip that holds one.
 

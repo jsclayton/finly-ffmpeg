@@ -20,8 +20,8 @@
 # bundle root), copied from scripts/privacy/<lib>.xcprivacy. The build checks
 # every manifest against the binary it ships with; see check_privacy_manifest.
 #
-# No shipped binary and no dSYM may carry this checkout's path or the builder's
-# home directory; see check_no_build_paths.
+# No file in an xcframework, binary, dSYM or plist, may carry this checkout's
+# path or the builder's home directory; see check_no_build_paths.
 
 source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 
@@ -86,6 +86,13 @@ fixup_install_names() {
 # write a framework binary's dSYM. dsymutil warns, and still exits 0, for every
 # object file in the debug map it cannot read: the dSYM it writes then silently
 # lacks those files' DWARF. So any warning is fatal here.
+#
+# dsymutil also writes a relocation map per arch,
+# Contents/Resources/Relocations/<arch>/<lib>.yml, whose binary-path is the
+# absolute path of the binary it read. The map is input for linking a mergeable
+# library into a client's binary; these are dynamic frameworks built without
+# -make_mergeable, so nothing can use it, and symbolication reads only
+# Contents/Resources/DWARF. It is removed, so no dSYM carries the build path.
 make_dsym() { # binary, dsym, label
   local binary="$1" dsym="$2" label="$3" out
   rm -rf "${dsym}"
@@ -94,6 +101,7 @@ make_dsym() { # binary, dsym, label
     echo "${out}" | head -20 >&2
     die "dsymutil warned for ${label}: the dSYM would be incomplete"
   fi
+  rm -rf "${dsym}/Contents/Resources/Relocations"
 }
 
 # the binary and its dSYM must carry the same UUID for every arch, or a crash
@@ -108,22 +116,27 @@ check_uuids() { # binary, dsym, label
 
 # --- build paths ---------------------------------------------------------------
 # A path from the machine that built a library must not ship in it: not this
-# checkout's root (configure's string, the debug info), and not the builder's
-# home, which also covers a CI runner's home. A toolchain installed under the
-# home (an Xcode in ~/Applications) fails here too, on purpose: configure records
-# --cc and --sysroot, so its path would be in every binary. build-ffmpeg.sh maps
-# the paths out of the debug info and rewrites them out of configure's string;
-# this is the check that it worked, on the bytes in the xcframeworks.
-check_no_build_paths() { # file, label
-  local file="$1" label="$2" needle count first
+# checkout's root (configure's string, the debug info, dsymutil's relocation
+# map), and not the builder's home, which also covers a CI runner's home. A
+# toolchain installed under the home (an Xcode in ~/Applications) fails here
+# too, on purpose: configure records --cc and --sysroot, so its path would be in
+# every binary. build-ffmpeg.sh maps the paths out of the debug info and
+# rewrites them out of configure's string, and make_dsym drops the relocation
+# map; this is the check that it worked, on every file of each assembled
+# xcframework: each slice's framework and dSYM, whole, and the Info.plist.
+check_no_build_paths() { # xcframework, label
+  local xcf="$1" label="$2" needle hits status file first
   local needles=("${ROOT_DIR}")
   if [[ -n "${HOME:-}" && "${HOME}" != "/" ]]; then needles+=("${HOME}"); fi
   for needle in "${needles[@]}"; do
-    count="$(LC_ALL=C grep -a -c -F -- "${needle}" "${file}" || true)"
-    [[ -n "${count}" ]] || die "${label}: cannot read $(basename "${file}")"
-    if [[ "${count}" != 0 ]]; then
+    status=0
+    hits="$(LC_ALL=C grep -r -a -l -F -- "${needle}" "${xcf}")" || status=$?
+    # grep: 0 is a hit, 1 is none, anything else is a file it could not read
+    [[ "${status}" -le 1 ]] || die "${label}: grep could not read every file in $(basename "${xcf}")"
+    if [[ "${status}" -eq 0 ]]; then
+      file="$(echo "${hits}" | head -1)"
       first="$(LC_ALL=C strings -a "${file}" | LC_ALL=C grep -m1 -F -- "${needle}" | cut -c1-200 || true)"
-      die "${label}: $(basename "${file}") holds the build path ${needle}: ${first}"
+      die "${label}: $(echo "${hits}" | wc -l | tr -d ' ') file(s) hold the build path ${needle}, first ${file#"${xcf}/"}: ${first}"
     fi
   done
 }
@@ -299,9 +312,6 @@ for lib in "${FF_LIBS[@]}"; do
       || die "no privacy manifest at scripts/privacy/${lib}.xcprivacy"
     check_privacy_manifest "${local_bin}" "${fwdir}/PrivacyInfo.xcprivacy" "${lib}/${slice}"
     codesign --force --sign - --timestamp=none "${fwdir}" >/dev/null 2>&1 || true
-    # on the signed binary and the dSYM, the bytes that go into the xcframework
-    check_no_build_paths "${local_bin}" "${lib}/${slice}"
-    check_no_build_paths "${dsym}/Contents/Resources/DWARF/${lib}" "${lib}/${slice} dSYM"
 
     xcf_args+=(-framework "${fwdir}" -debug-symbols "${dsym}")
   done
@@ -309,6 +319,16 @@ for lib in "${FF_LIBS[@]}"; do
   xcodebuild -create-xcframework "${xcf_args[@]}" \
     -output "${XCF_OUT}/${lib}.xcframework" >/dev/null \
     || die "xcodebuild -create-xcframework failed for ${lib}"
+  # the path check reads the bytes that go into the zip, so first make sure they
+  # are all there: one binary and one dSYM DWARF file per slice
+  xcf="${XCF_OUT}/${lib}.xcframework"
+  shopt -s nullglob
+  bins=("${xcf}"/*/"${lib}.framework/${lib}")
+  dwarfs=("${xcf}"/*/dSYMs/"${lib}.framework.dSYM/Contents/Resources/DWARF/${lib}")
+  shopt -u nullglob
+  [[ ${#bins[@]} -eq ${#FF_SLICES[@]} && ${#dwarfs[@]} -eq ${#FF_SLICES[@]} ]] \
+    || die "${lib}.xcframework holds ${#bins[@]} binaries and ${#dwarfs[@]} dSYMs, expected ${#FF_SLICES[@]} of each"
+  check_no_build_paths "${xcf}" "${lib}"
   log "  -> ${XCF_OUT}/${lib}.xcframework"
 done
 

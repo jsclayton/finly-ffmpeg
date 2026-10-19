@@ -34,8 +34,8 @@ perl -e 'alarm 1200; exec @ARGV' ./build.sh --smoke
   **2 min 26 s, green**, same `avformat 63.1.101`. On FFmpeg 9.0.2
   (2026-10-19, `--clean --smoke`, tarball already fetched): **2 min 12 s,
   green** (exit 0, `SMOKE_OK`, `avformat 63.1.102`). Re-measure on every
-  bump — the version and the
-  library number here are what a reader checks a gate run against. The
+  bump: the version and the library number here are what a reader checks a
+  gate run against. The
   bound is six times the measurement; a run that hits it is a hung
   simulator or a stuck download, not a slow build. A worktree never shares
   build state with the main checkout, so every implementer run and every

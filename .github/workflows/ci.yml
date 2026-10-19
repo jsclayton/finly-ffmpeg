@@ -25,21 +25,31 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-26
+    # Xcode 27 ships on its own image (`xcode-27`, macOS 27); `macos-26` has no Xcode 27.
+    runs-on: xcode-27
+    env:
+      # The Xcode the releases are built with, by version and build. A beta or another point
+      # release on the image is never picked by sorting: the image carries 27.0, 27.1 and a 27.2
+      # beta side by side. Bump both together when the release toolchain moves.
+      XCODE_VERSION: "27.1"
+      XCODE_BUILD: "27A9275"
     steps:
       - uses: actions/checkout@v4
 
-      # The newest Xcode 27 on the image, the major the releases are built with. No fallback: a
-      # missing Xcode 27 fails here instead of checking the build with another toolchain (until
-      # 2026-10-06 it silently fell back to Xcode 26.3).
+      # No fallback: a missing or different Xcode fails here instead of checking the build with
+      # another toolchain (until 2026-10-06 it silently fell back to Xcode 26.3).
       - name: Select Xcode
         run: |
           set -euo pipefail
-          XCODE="$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)"
-          if [[ -z "$XCODE" ]]; then
-            echo "::error::no Xcode 27 on this runner image"; ls -d /Applications/Xcode_*.app; exit 1
+          XCODE="/Applications/Xcode_${XCODE_VERSION}.app"
+          if [[ ! -d "$XCODE" ]]; then
+            echo "::error::no Xcode ${XCODE_VERSION} on this runner image"; ls -d /Applications/Xcode_*.app; exit 1
           fi
           sudo xcode-select -s "$XCODE"
+          build="$(xcodebuild -version | awk '/^Build version/ { print $3 }')"
+          if [[ "$build" != "$XCODE_BUILD" ]]; then
+            echo "::error::Xcode ${XCODE_VERSION} on this image is build ${build}, not ${XCODE_BUILD}"; exit 1
+          fi
 
       - name: Show toolchain
         run: |

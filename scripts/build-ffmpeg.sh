@@ -15,9 +15,10 @@ source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 
 # configure writes its whole command line into config.h as FFMPEG_CONFIGURATION,
 # the string avutil_configuration() and its siblings return, so every absolute
-# path passed to configure (--prefix, the prefix maps in --extra-cflags) would
-# be compiled into each shipped binary. Rewrite the checkout root to "." on that
-# one line before make reads it, so the string reads --prefix=./build/install/...
+# path passed to configure (--prefix, the prefix maps in --extra-cflags, the
+# -oso_prefix in --extra-ldflags) would be compiled into each shipped binary.
+# Rewrite the checkout root to "." on that one line before make reads it, so
+# the string reads --prefix=./build/install/...
 # The rewrite is literal, not a pattern, and touches no other line (the install
 # itself still uses the real prefix, from config.mak). It dies if the line does
 # not hold the root first (configure moved the string, so the rewrite would
@@ -68,6 +69,16 @@ build_one() {
   cflags+=" -ffile-prefix-map=${FFMPEG_SRC_DIR}=ffmpeg-${FFMPEG_VERSION}"
   cflags+=" -ffile-prefix-map=${BUILD_DIR}=build"
 
+  # The same commit builds to the same bytes in any checkout. The linker writes
+  # a debug map into the unstripped library, one N_OSO entry per object file
+  # with its absolute path and its modification time, and derives the
+  # library's LC_UUID from the whole output. strip removes the map, but not the
+  # UUID, so two checkouts (or two builds) gave libraries that differed in
+  # their UUID and the signature over it. -oso_prefix records the object paths
+  # relative to the checkout root (make_dsym gives dsymutil the root back), and
+  # ZERO_AR_DATE=1, on make below, records each modification time as 0.
+  local ldflags="${flags} -Wl,-oso_prefix,${ROOT_DIR}/"
+
   rm -rf "${objdir}" "${prefix}"
   mkdir -p "${objdir}"
 
@@ -80,7 +91,7 @@ build_one() {
       --as="${cc}" \
       --sysroot="${sysroot}" \
       --extra-cflags="${cflags}" \
-      --extra-ldflags="${flags}" \
+      --extra-ldflags="${ldflags}" \
       "${FF_CONFIGURE[@]}" \
       "${FF_COMPONENTS[@]}" \
       > "${objdir}/configure.log" 2>&1 ) \
@@ -88,7 +99,7 @@ build_one() {
 
   scrub_configuration "${objdir}/config.h" "${tag}"
 
-  ( cd "${objdir}" && make -j"${FF_MAKE_JOBS}" > "${objdir}/make.log" 2>&1 ) \
+  ( cd "${objdir}" && ZERO_AR_DATE=1 make -j"${FF_MAKE_JOBS}" > "${objdir}/make.log" 2>&1 ) \
     || { tail -40 "${objdir}/make.log" >&2; die "make failed for ${tag} (see ${objdir}/make.log)"; }
 
   ( cd "${objdir}" && make install > "${objdir}/install.log" 2>&1 ) \

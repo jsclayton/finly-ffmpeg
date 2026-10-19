@@ -50,9 +50,14 @@ string `avutil_configuration()` returns, and `build-ffmpeg.sh` rewrites the
 checkout root in it to `.` (so it reads `--prefix=./build/install/<sdk>-<arch>`).
 `make-xcframeworks.sh` fails the build when any file in an assembled
 xcframework (binary, dSYM or plist) holds the checkout's path or the builder's
-home directory. The release zips carry no AppleDouble (`__MACOSX/`, `._`) entries:
-`scripts/zip-xcframeworks.sh` zips without resource forks or extended
-attributes and refuses a zip that holds one.
+home directory. And a commit builds to the same framework binaries in any
+checkout: the linker records the object files in the library's debug map
+relative to the checkout root and with no modification time (`-oso_prefix`,
+`ZERO_AR_DATE=1`), so the UUID it derives from the output, and the signature
+over it, no longer depend on where or when the build ran; `make-xcframeworks.sh`
+fails the build on a debug map that does not. The release zips carry no
+AppleDouble (`__MACOSX/`, `._`) entries: `scripts/zip-xcframeworks.sh` zips
+without resource forks or extended attributes and refuses a zip that holds one.
 
 The dSYMs roughly triple the size of the release zips; the shipped binaries
 keep their size and their exported symbols. Measured on FFmpeg 9.0.2, as the

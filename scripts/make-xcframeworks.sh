@@ -83,6 +83,19 @@ fixup_install_names() {
   done
 }
 
+# the debug map must be the one build-ffmpeg.sh asks the linker for, or the
+# binary's UUID depends on where and when it was built: every N_OSO entry names
+# its object file relative to the checkout root (-oso_prefix), with a
+# modification time of 0 (ZERO_AR_DATE=1). An absolute path here means the
+# prefix did not match, for example a checkout reached through a symlink.
+check_debug_map() { # binary, label
+  local oso
+  oso="$(nm -ap -arch all "$1" | awk '$5 == "OSO" { print $1, $6 }')" || die "nm failed for $2"
+  [[ -n "${oso}" ]] || die "$2: the debug map names no object file"
+  ! grep -q -v '^0* [^/]' <<< "${oso}" \
+    || die "$2: the debug map is not reproducible, first entry: $(grep -m1 -v '^0* [^/]' <<< "${oso}")"
+}
+
 # write a framework binary's dSYM. dsymutil warns, and still exits 0, for every
 # object file in the debug map it cannot read: the dSYM it writes then silently
 # lacks those files' DWARF. So any warning is fatal here.
@@ -95,8 +108,12 @@ fixup_install_names() {
 # Contents/Resources/DWARF. It is removed, so no dSYM carries the build path.
 make_dsym() { # binary, dsym, label
   local binary="$1" dsym="$2" label="$3" out
+  check_debug_map "${binary}" "${label}"
   rm -rf "${dsym}"
-  out="$(dsymutil "${binary}" -o "${dsym}" 2>&1)" || { echo "${out}" >&2; die "dsymutil failed for ${label}"; }
+  # the debug map names the object files relative to the checkout root
+  # (-oso_prefix in build-ffmpeg.sh), so dsymutil is given the root to find them
+  out="$(dsymutil --oso-prepend-path "${ROOT_DIR}" "${binary}" -o "${dsym}" 2>&1)" \
+    || { echo "${out}" >&2; die "dsymutil failed for ${label}"; }
   if [[ -n "${out}" ]]; then
     echo "${out}" | head -20 >&2
     die "dsymutil warned for ${label}: the dSYM would be incomplete"

@@ -311,7 +311,10 @@ for lib in "${FF_LIBS[@]}"; do
     cp "${PRIVACY_DIR}/${lib}.xcprivacy" "${fwdir}/PrivacyInfo.xcprivacy" \
       || die "no privacy manifest at scripts/privacy/${lib}.xcprivacy"
     check_privacy_manifest "${local_bin}" "${fwdir}/PrivacyInfo.xcprivacy" "${lib}/${slice}"
-    codesign --force --sign - --timestamp=none "${fwdir}" >/dev/null 2>&1 || true
+    # a framework that fails to sign stops the build: an unsigned framework
+    # would still assemble into the xcframework
+    out="$(codesign --force --sign - --timestamp=none "${fwdir}" 2>&1)" \
+      || { echo "${out}" >&2; die "codesign failed for ${lib}/${slice}: ${lib}.framework is not signed"; }
 
     xcf_args+=(-framework "${fwdir}" -debug-symbols "${dsym}")
   done
@@ -329,6 +332,12 @@ for lib in "${FF_LIBS[@]}"; do
   [[ ${#bins[@]} -eq ${#FF_SLICES[@]} && ${#dwarfs[@]} -eq ${#FF_SLICES[@]} ]] \
     || die "${lib}.xcframework holds ${#bins[@]} binaries and ${#dwarfs[@]} dSYMs, expected ${#FF_SLICES[@]} of each"
   check_no_build_paths "${xcf}" "${lib}"
+  # and each framework's seal holds on the copy in the xcframework, the one the
+  # zip carries
+  for fw in "${xcf}"/*/"${lib}.framework"; do
+    out="$(codesign --verify --strict "${fw}" 2>&1)" \
+      || { echo "${out}" >&2; die "codesign --verify failed for ${fw#"${XCF_OUT}/"}: its seal does not hold"; }
+  done
   log "  -> ${XCF_OUT}/${lib}.xcframework"
 done
 

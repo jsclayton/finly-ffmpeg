@@ -28,10 +28,10 @@ set -euo pipefail
 # the enhancement layer is removed ahead of it by upstream's dovi_split, and
 # 0005 removes no upstream line). RE-VERIFY all five
 # on every FFMPEG_VERSION bump: parser struct paths and demuxer hook sites
-# are version-specific (confirmed against 9.0.1). The URLSession AVIOContext
+# are version-specific (confirmed against 9.0.2). The URLSession AVIOContext
 # bridge is NOT a patch — it is app-side code on the public API.
-FFMPEG_VERSION="9.0.1"
-FFMPEG_SHA256="cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635"
+FFMPEG_VERSION="9.0.2"
+FFMPEG_SHA256="8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e"
 FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
 
 # ----------------------------------------------------------------------------

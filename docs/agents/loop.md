@@ -31,7 +31,10 @@ perl -e 'alarm 1200; exec @ARGV' ./build.sh --smoke
   on FFmpeg 9.0.1 (exit 0, `SMOKE_OK`, `avformat 63.1.101`); 3 min 14 s on
   8.1.2 before the bump. With debug info, dSYMs and frame pointers
   (2026-10-06, `--clean --smoke` with the tarball already fetched):
-  **2 min 26 s, green**, same `avformat 63.1.101`. Re-measure on every bump — the version and the
+  **2 min 26 s, green**, same `avformat 63.1.101`. On FFmpeg 9.0.2
+  (2026-10-19, `--clean --smoke`, tarball already fetched): **2 min 12 s,
+  green** (exit 0, `SMOKE_OK`, `avformat 63.1.102`). Re-measure on every
+  bump — the version and the
   library number here are what a reader checks a gate run against. The
   bound is six times the measurement; a run that hits it is a hung
   simulator or a stuck download, not a slow build. A worktree never shares

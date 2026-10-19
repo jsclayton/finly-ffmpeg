@@ -51,12 +51,12 @@ directory. The release zips carry no AppleDouble (`__MACOSX/`, `._`) entries:
 attributes and refuses a zip that holds one.
 
 The dSYMs roughly triple the size of the release zips; the shipped binaries
-keep their size and their exported symbols. Measured on FFmpeg 9.0.1, as the
+keep their size and their exported symbols. Measured on FFmpeg 9.0.2, as the
 `ditto` zips `zip-xcframeworks.sh` makes:
 
 | xcframework zip | without dSYMs | with dSYMs |
 |---|---|---|
-| `libavcodec`    | 6.5 MB | 19.5 MB |
+| `libavcodec`    | 6.4 MB | 19.5 MB |
 | `libavformat`   | 2.6 MB | 9.6 MB |
 | `libavutil`     | 1.8 MB | 5.0 MB |
 | `libswresample` | 0.3 MB | 0.7 MB |
@@ -165,7 +165,7 @@ deliberately: a binary-artifact dependency is bumped on purpose, never by range
 resolution):
 
 ```swift
-.package(url: "https://github.com/jsclayton/finly-ffmpeg.git", exact: "9.0.1-1")
+.package(url: "https://github.com/jsclayton/finly-ffmpeg.git", exact: "9.0.2-1")
 // product: .product(name: "CFFmpeg", package: "finly-ffmpeg")
 ```
 

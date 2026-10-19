@@ -15,10 +15,10 @@
 #
 # What it does, in order:
 #   1. next N from existing v{VER}-* tags
-#   2. zip the four xcframeworks (ditto --keepParent: .xcframework at zip root,
-#      the layout SwiftPM requires; each slice's dSYM rides inside) + the LGPL
+#   2. zip the four xcframeworks with scripts/zip-xcframeworks.sh (the zip
+#      layout and its checks are in that script's header) + copy the LGPL
 #      bundle, renamed to the tag
-#   3. swift package compute-checksum per zip
+#   3. swift package compute-checksum per zip, printed by the zip script
 #   4. rewrite Package.swift's binaryTargets to url:checksum: for this tag
 #   5. commit, tag, push main + tag
 #   6. gh release create with the zips, the LGPL bundle, and checksums.txt
@@ -118,13 +118,15 @@ echo "==> releasing ${TAG}"
 DIST="build/dist-${TAG}"
 rm -rf "$DIST"; mkdir -p "$DIST"
 
-# Zip each xcframework with the .xcframework directory at the zip ROOT — the
-# layout SwiftPM's binaryTarget unpacker requires.
+# Zip each xcframework (the layout and the checks are the zip script's) and take
+# each checksum from its output: the bytes summed are the bytes uploaded below.
+zips="$(bash scripts/zip-xcframeworks.sh "$DIST")" \
+  || { echo "zipping the xcframeworks failed" >&2; exit 1; }
 declare -a CHECKSUMS=()
 for lib in "${FF_LIBS[@]}"; do
-  ditto -c -k --sequesterRsrc --keepParent \
-    "artifacts/xcframework/${lib}.xcframework" "$DIST/${lib}.xcframework.zip"
-  sum="$(swift package compute-checksum "$DIST/${lib}.xcframework.zip")"
+  sum="$(awk -v z="${lib}.xcframework.zip" '$1 == z { print $2 }' <<< "$zips")"
+  [[ "$sum" =~ ^[0-9a-f]{64}$ ]] \
+    || { echo "no checksum for ${lib}.xcframework.zip from the zip script" >&2; exit 1; }
   CHECKSUMS+=("$sum")
   echo "    ${lib}.xcframework.zip  ${sum}"
 done

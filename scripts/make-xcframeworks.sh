@@ -19,6 +19,9 @@
 # Each framework also carries a privacy manifest (PrivacyInfo.xcprivacy, at the
 # bundle root), copied from scripts/privacy/<lib>.xcprivacy. The build checks
 # every manifest against the binary it ships with; see check_privacy_manifest.
+#
+# No shipped binary and no dSYM may carry this checkout's path or the builder's
+# home directory; see check_no_build_paths.
 
 source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 
@@ -101,6 +104,28 @@ check_uuids() { # binary, dsym, label
   dsym_uuids="$(dwarfdump --uuid "$2" | awk '{print $2, $3}' | sort)"
   [[ -n "${bin_uuids}" && "${bin_uuids}" == "${dsym_uuids}" ]] \
     || die "UUID mismatch for $3: binary [${bin_uuids}] vs dSYM [${dsym_uuids}]"
+}
+
+# --- build paths ---------------------------------------------------------------
+# A path from the machine that built a library must not ship in it: not this
+# checkout's root (configure's string, the debug info), and not the builder's
+# home, which also covers a CI runner's home. A toolchain installed under the
+# home (an Xcode in ~/Applications) fails here too, on purpose: configure records
+# --cc and --sysroot, so its path would be in every binary. build-ffmpeg.sh maps
+# the paths out of the debug info and rewrites them out of configure's string;
+# this is the check that it worked, on the bytes in the xcframeworks.
+check_no_build_paths() { # file, label
+  local file="$1" label="$2" needle count first
+  local needles=("${ROOT_DIR}")
+  if [[ -n "${HOME:-}" && "${HOME}" != "/" ]]; then needles+=("${HOME}"); fi
+  for needle in "${needles[@]}"; do
+    count="$(LC_ALL=C grep -a -c -F -- "${needle}" "${file}" || true)"
+    [[ -n "${count}" ]] || die "${label}: cannot read $(basename "${file}")"
+    if [[ "${count}" != 0 ]]; then
+      first="$(LC_ALL=C strings -a "${file}" | LC_ALL=C grep -m1 -F -- "${needle}" | cut -c1-200 || true)"
+      die "${label}: $(basename "${file}") holds the build path ${needle}: ${first}"
+    fi
+  done
 }
 
 # --- privacy manifests -------------------------------------------------------
@@ -274,6 +299,9 @@ for lib in "${FF_LIBS[@]}"; do
       || die "no privacy manifest at scripts/privacy/${lib}.xcprivacy"
     check_privacy_manifest "${local_bin}" "${fwdir}/PrivacyInfo.xcprivacy" "${lib}/${slice}"
     codesign --force --sign - --timestamp=none "${fwdir}" >/dev/null 2>&1 || true
+    # on the signed binary and the dSYM, the bytes that go into the xcframework
+    check_no_build_paths "${local_bin}" "${lib}/${slice}"
+    check_no_build_paths "${dsym}/Contents/Resources/DWARF/${lib}" "${lib}/${slice} dSYM"
 
     xcf_args+=(-framework "${fwdir}" -debug-symbols "${dsym}")
   done

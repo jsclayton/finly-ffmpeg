@@ -41,11 +41,18 @@ so the binary and its dSYM carry the same UUID for every arch. `make-xcframework
 fails the build on a dSYM that would be incomplete or whose UUIDs do not match.
 Source and build paths in the debug info are mapped to relative names
 (`build/obj/<sdk>-<arch>/src/...`), so the dSYMs carry no path from the machine
-that built them.
+that built them. The binaries carry none either: configure records its command
+line, absolute paths included, as the string `avutil_configuration()` returns,
+and `build-ffmpeg.sh` rewrites the checkout root in it to `.` (so it reads
+`--prefix=./build/install/<sdk>-<arch>`). `make-xcframeworks.sh` fails the build
+when any shipped binary or dSYM holds the checkout's path or the builder's home
+directory. The release zips carry no AppleDouble (`__MACOSX/`, `._`) entries:
+`scripts/zip-xcframeworks.sh` zips without resource forks or extended
+attributes and refuses a zip that holds one.
 
 The dSYMs roughly triple the size of the release zips; the shipped binaries
 keep their size and their exported symbols. Measured on FFmpeg 9.0.1, as the
-`ditto` zips `release.sh` makes:
+`ditto` zips `zip-xcframeworks.sh` makes:
 
 | xcframework zip | without dSYMs | with dSYMs |
 |---|---|---|
@@ -172,9 +179,10 @@ consume a local checkout via an Xcode local-package override (and run
 
 `bash scripts/release.sh` — cuts a release from the **locally built,
 verified** artifacts: refuses an xcframework that is missing a slice's dSYM,
-zips the xcframeworks (dSYMs inside), computes SwiftPM checksums from
-those exact bytes, rewrites `Package.swift` to this tag's asset URLs, commits,
-tags `v{ffmpeg}-{N}`, pushes, and uploads the assets + LGPL bundle. The
+zips the xcframeworks (dSYMs inside) with `scripts/zip-xcframeworks.sh`, takes
+the SwiftPM checksums it computes from those exact bytes, rewrites
+`Package.swift` to this tag's asset URLs, commits, tags `v{ffmpeg}-{N}`,
+pushes, and uploads the assets + LGPL bundle. The
 tag-triggered GitHub Action is a from-scratch reproducibility check only — it
 never publishes, because runner bytes would not match the committed checksums.
 GitHub **release immutability** is enabled: published tags and assets lock,

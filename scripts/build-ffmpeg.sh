@@ -13,6 +13,29 @@ source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 
 [[ -d "${FFMPEG_SRC_DIR}" ]] || die "source not found — run scripts/fetch-ffmpeg.sh first"
 
+# configure writes its whole command line into config.h as FFMPEG_CONFIGURATION,
+# the string avutil_configuration() and its siblings return, so every absolute
+# path passed to configure (--prefix, the prefix maps in --extra-cflags) would
+# be compiled into each shipped binary. Rewrite the checkout root to "." on that
+# one line before make reads it, so the string reads --prefix=./build/install/...
+# The rewrite is literal, not a pattern, and touches no other line (the install
+# itself still uses the real prefix, from config.mak). It dies if the line does
+# not hold the root first (configure moved the string, so the rewrite would
+# silently do nothing) and if the line still holds it after.
+scrub_configuration() { # config.h, tag
+  local header="$1" tag="$2" key='#define FFMPEG_CONFIGURATION ' line
+  [[ "$(grep -c -F -- "${key}" "${header}" || true)" == 1 ]] \
+    || die "${tag}: ${header} does not hold exactly one FFMPEG_CONFIGURATION line"
+  line="$(grep -F -- "${key}" "${header}")" || die "${tag}: cannot read FFMPEG_CONFIGURATION from ${header}"
+  [[ "${line}" == *"${ROOT_DIR}"* ]] \
+    || die "${tag}: FFMPEG_CONFIGURATION does not hold the checkout root; configure moved the string"
+  ROOT="${ROOT_DIR}" KEY="${key}" perl -pi -e 's/\Q$ENV{ROOT}\E/./g if index($_, $ENV{KEY}) == 0' "${header}" \
+    || die "${tag}: rewriting FFMPEG_CONFIGURATION failed"
+  line="$(grep -F -- "${key}" "${header}")" || die "${tag}: the rewrite removed FFMPEG_CONFIGURATION from ${header}"
+  [[ "${line}" != *"${ROOT_DIR}"* ]] \
+    || die "${tag}: FFMPEG_CONFIGURATION still holds the checkout root after the rewrite"
+}
+
 build_one() {
   local slice="$1" sdk="$2" arch="$3" triple="$4"
   local tag="${sdk}-${arch}"
@@ -36,10 +59,14 @@ build_one() {
   # The debug info (--enable-debug in config.sh) records source and build paths;
   # map them to stable relative names so the published dSYMs are the same
   # wherever the build ran and carry no path from the machine that built them.
-  # Debug info only: __FILE__ strings in the binaries are not touched.
+  # -ffile-prefix-map covers __FILE__ as well as the debug info. __FILE__ is
+  # already relative (FFmpeg's out-of-tree build compiles through its `src`
+  # link), so that half is a backstop. configure records these flags, with
+  # their absolute paths, in its configuration string, which scrub_configuration
+  # rewrites after configure.
   local cflags="${flags}"
-  cflags+=" -fdebug-prefix-map=${FFMPEG_SRC_DIR}=ffmpeg-${FFMPEG_VERSION}"
-  cflags+=" -fdebug-prefix-map=${BUILD_DIR}=build"
+  cflags+=" -ffile-prefix-map=${FFMPEG_SRC_DIR}=ffmpeg-${FFMPEG_VERSION}"
+  cflags+=" -ffile-prefix-map=${BUILD_DIR}=build"
 
   rm -rf "${objdir}" "${prefix}"
   mkdir -p "${objdir}"
@@ -58,6 +85,8 @@ build_one() {
       "${FF_COMPONENTS[@]}" \
       > "${objdir}/configure.log" 2>&1 ) \
     || { tail -40 "${objdir}/configure.log" >&2; die "configure failed for ${tag} (see ${objdir}/configure.log)"; }
+
+  scrub_configuration "${objdir}/config.h" "${tag}"
 
   ( cd "${objdir}" && make -j"${FF_MAKE_JOBS}" > "${objdir}/make.log" 2>&1 ) \
     || { tail -40 "${objdir}/make.log" >&2; die "make failed for ${tag} (see ${objdir}/make.log)"; }

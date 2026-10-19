@@ -53,19 +53,16 @@ jobs:
       - name: Smoke test (simulator link + run)
         run: ./scripts/smoke-test.sh
 
+      # The release's own zip step, so these zips have the layout and pass the
+      # checks of the ones a release uploads (no AppleDouble entries, the
+      # .xcframework at the root). It prints each zip's SwiftPM checksum.
       - name: Package artifacts
         run: |
           set -euo pipefail
           mkdir -p dist
-          for fw in artifacts/xcframework/*.xcframework; do
-            name="$(basename "$fw" .xcframework)"
-            ( cd artifacts/xcframework && zip -qry "../../dist/${name}.xcframework.zip" "${name}.xcframework" )
-          done
+          bash scripts/zip-xcframeworks.sh dist
           cp artifacts/lgpl/*.tar.gz dist/
-          # checksums for .binaryTarget(url:checksum:) consumers
-          ( cd dist && for z in *.xcframework.zip; do
-              echo "$(swift package --package-path "$GITHUB_WORKSPACE" compute-checksum "$z" 2>/dev/null || shasum -a 256 "$z" | awk '{print $1}')  $z"
-            done | tee checksums.txt )
+          ( cd dist && shasum -a 256 *.xcframework.zip *.tar.gz > checksums.txt && cat checksums.txt )
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

@@ -28,7 +28,7 @@ The check a change must pass before it lands: the full pipeline plus the simulat
 _Avoid_: tests, suite, CI
 
 **Land**:
-Fast-forward a change onto `main` after it passes the gate. Landing proves the build; it does not prove behaviour.
+Squash-merge a change's pull request onto `main` after it passes the gate. Landing proves the build; it does not prove behaviour.
 _Avoid_: merge, ship
 
 **Release**:

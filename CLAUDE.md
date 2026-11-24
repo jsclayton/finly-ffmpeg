@@ -74,10 +74,10 @@ preserve both properties, or B-frame composition timing breaks downstream.
   are just as public. The consumer is "the engine" or "the consumer"; its
   repository is never named. What must stay private stays in the engine's own
   tracker.
-- **Linear history — NEVER create a merge commit.** Squash + merge (the default),
-  or rebase + fast-forward when the branch's individual commits are valuable
-  history. Even history imports from another repo (filter-repo grafts) are
-  rebased onto the target and fast-forwarded — never
+- **Linear history — NEVER create a merge commit.** Every change lands on
+  `main` through a pull request, squash-merged; `main` refuses direct pushes
+  and every other merge method. Even history imports from another repo
+  (filter-repo grafts) come in that way — never
   `git merge --allow-unrelated-histories`.
 
 ## Shell gotchas
@@ -96,23 +96,14 @@ name; increment `N`, never re-cut a tag.
 
 ## Agent skills
 
-### Issue tracker
-
-Issues live in this repo's GitHub Issues (`jsclayton/finly-ffmpeg`, via the `gh` CLI). See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-The five canonical triage labels, unrenamed (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
-
 ### Domain docs
 
 Single-context: `CONTEXT.md` (glossary) + `docs/adr/` (decisions) at the repo root. See `docs/agents/domain.md`.
 
-## Implementation loop
+## How changes land
 
-This repo runs the conductor plugin's loop: `conductor:next` (entry point —
-John asks "what's next"), `conductor:brief`, `conductor:implement-ticket`,
-`conductor:start`. Project facts — test gate, review personas, docs a brief
-reads — are in `docs/agents/loop.md`; the rules are in the plugin. Work
-lands on `main` by rebase + fast-forward; implementers run in
-`.claude/worktrees/` and never push.
+Changes land on `main` through pull requests, squash-merged. The PR title is a
+Conventional Commit with a lowercase subject, at most 92 characters (the
+`PR Title` check). Project facts — the test gate, review duties, docs a change
+reads — are in `docs/agents/loop.md`. The maintainer's own notes and tracker
+are private.
